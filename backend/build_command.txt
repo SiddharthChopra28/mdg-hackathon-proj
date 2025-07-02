@@ -1,0 +1,1 @@
+g++ ./socket/ipc_server.cpp ./cpu/cpu_optimizer.cpp ./cpu/utils/cpu_backend_utils.cpp ./cpu/cpu_reader.cpp -o ipc_server -std=c++17 -lbpf

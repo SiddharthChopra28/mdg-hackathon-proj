@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <unistd.h>     
 #include <string>
 #include <vector>
 #include <fstream>
@@ -21,22 +21,37 @@
 
 using namespace std;
 
-bool is_kernel_thread(pid_t pid) 
-{
+bool is_kernel_thread(pid_t pid) {
     char path[64];
-    snprintf(path, sizeof(path), "/proc/%d/exe", pid);
-    return access(path, F_OK) != 0;
+    snprintf(path, sizeof(path), "/proc/%d/exe", pid);      // we are writing the path to actual executable file that launched the process
+                                                            // Proc is a virtual filesystem used by Linux, providing an interface to kernel level data structures
+                                                            // at proc/pid/ we get information of a specific pid
+                                                            // exe is a symbolic link that points to said executable file.
+    return access(path, F_OK) != 0;         // Checking if file exists and can be accessed. Returns 0 if true or returns -1 if false.
+                                            // Kernel level threads are not launched from binaries on the system. So if a pid represents a kernel level thread,
+                                            // it returns -1. So our function returns 1.
 }
 
-bool is_root_process(pid_t pid) 
-{
+bool is_root_process(pid_t pid) {
     string path = "/proc/" + to_string(pid);
     struct stat st;
-    if (stat(path.c_str(), &st) == 0) 
-    {
-        return st.st_uid == 0;
+    if (stat(path.c_str(), &st) == 0) {
+        return st.st_uid == 0;      // uid of a root process is 0
     }
     return false;
+}
+
+void ensure_whitelist_dir() {
+    const char* home = getenv("HOME");
+    if (!home) return;
+
+    string path = string(home) + "/.config/cpu_optimizer";
+
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0) {
+        mkdir((string(home) + "/.config").c_str(), 0755);  // Ensure ~/.config exists
+        mkdir(path.c_str(), 0755);                         // Then create ~/.config/cpu_optimizer
+    }
 }
 
 map<string, ProcessGroup> read_process_groups_from_map() 
@@ -95,3 +110,47 @@ map<string, ProcessGroup> read_process_groups_from_map()
 
     return grouped;
 }
+
+
+const string WHITELIST_PATH = string(getenv("HOME")) + "/.config/cpu_optimizer/whitelist.txt";
+
+
+set<string> load_whitelist() {
+    ensure_whitelist_dir();
+
+    set<string> whitelist;
+    ifstream file(WHITELIST_PATH);
+    string line;
+    while (getline(file, line)) {
+        if (!line.empty()) whitelist.insert(line);
+    }
+    return whitelist;
+}
+
+bool add_to_whitelist(const string& name) {
+    ensure_whitelist_dir();
+
+    set<string> whitelist = load_whitelist();
+    if (whitelist.count(name)) return false;
+
+    ofstream file(WHITELIST_PATH, ios::app);
+    if (!file) return false;
+
+    file << name << '\n';
+    return true;
+}
+
+bool remove_from_whitelist(const string& name) {
+    ensure_whitelist_dir();
+
+    set<string> whitelist = load_whitelist();
+    if (!whitelist.erase(name)) return false;
+
+    ofstream file(WHITELIST_PATH, ios::trunc);
+    for (const auto& p : whitelist) {
+        file << p << '\n';
+    }
+    return true;
+}
+
+
