@@ -1,0 +1,17 @@
+# /etc/systemd/system/cpu_optimizer.service
+
+[Unit]
+Description=CPU Optimizer Socket Server (eBPF-based)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cpu_optimizer_daemon
+Restart=on-failure
+User=root
+WorkingDirectory=/usr/local/bin
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
