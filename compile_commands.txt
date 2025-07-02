@@ -1,0 +1,22 @@
+clang -O2 -g -target bpf -c network.bpf.c -o network.bpf.o
+
+bpftool gen skeleton network.bpf.o > network.skel.h
+
+g++ -O2 -g network.cpp -o network -lbpf -lelf -lz
+
+#include <bpf/libbpf.h>
+#include <bpf/bpf.h>
+#include <bpf/bpf_tc.h>
+
+struct bpf_tc_hook hook = {
+    .ifindex = if_nametoindex("eth0"),
+    .attach_point = BPF_TC_EGRESS,
+};
+bpf_tc_hook_create(&hook, 0);
+
+struct bpf_tc_opts opts = {
+    .handle = 1,
+    .priority = 1,
+    .prog_fd = prog_fd,
+};
+bpf_tc_attach(&hook, &opts);

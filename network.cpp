@@ -5,6 +5,8 @@
 #include<vector>
 #include<map>
 #include<limits.h>
+#include<cstdlib>
+
 
 extern "C"{
     #include "network.skel.h"
@@ -27,13 +29,15 @@ uint64_t get_kernel_time_ns(){
     return ts.tv_sec*1000000000ULL + ts.tv_nsec;
 }
 
+typedef struct rate_limit{
+    __u64 rate; // bytes per sec
+    __u64 max_tokens; 
+    __u64 tokens;
+    __u64 last_time;
+
+} rate_limit_t;
 
 
-// struct CustomOrder{
-//     bool operator() (std::vector<data_t> a, std::vector<data_t> b) const{
-//         return ;
-//     }
-// };
 
 
 std::map<std::pair<int, std::string>, std::vector<data_t>> pid_wise_map;
@@ -124,13 +128,35 @@ void manageData(bool& stopPolling, struct network_bpf* skel){
 }
 
 void publisher(){
-    std::cout<<"hello";
     while (true){
-        for (auto pair: pid_wise_map){
-            std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
+        //overall network usage
+        int bytes_sent_per_sec = 0;
+        int bytes_recd_per_sec = 0;
+    
+        for (auto entry: overall_vector){
+            if (entry.bytes<0){
+                bytes_recd_per_sec -= entry.bytes;
+
+            }
+            else{
+                bytes_sent_per_sec += entry.bytes;
+            }
         }
+
+        std::cout<<"Upload speed (bytes/sec): "<<bytes_sent_per_sec<<std::endl;
+        std::cout<<"Download speed (bytes/sec): "<<bytes_recd_per_sec<<std::endl;
+        std::cout<<"-------"<<std::endl;
+
+        // for (auto pair: pid_wise_map){
+        //     std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
+        // }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
+    
 }
+
+
 
 
 int main(){
@@ -148,13 +174,21 @@ int main(){
     }
 
     std::cout<<"Program loaded and attached"<<std::endl;
+
+    // also need to load the throttler ebpf program
+
+    int load = system("load_throttler.sh");
+    if (load){
+        std::cerr<<"Failed to load throttler ebpf program";
+        return 1;
+    }
+
     
 
     bool stopPolling = false;
 
     std::thread t_manage (manageData, std::ref(stopPolling), skel);
 
-    std::cout<<"running publusher";
     std::thread t_publish(publisher);
 
     t_manage.join();
