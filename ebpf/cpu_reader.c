@@ -10,7 +10,7 @@
 
 #define MAP_PATH "/sys/fs/bpf/cpu_times"
 
-#define MAX_PROCESSES 4096
+#define MAX_PROCESSES 4096      
 #define MAX_NAME_LEN  256
 #define IGNORE_CPU_THRESHOLD_NS 2000000000ULL  // 2 seconds
 
