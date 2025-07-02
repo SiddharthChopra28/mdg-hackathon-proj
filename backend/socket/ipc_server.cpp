@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <sys/stat.h> 
 #include "../cpu/Icpu_optimizer.h"
+#include "../../ebpf/cpu/cputracker.skel.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -65,6 +66,22 @@ void handle_command(const json& j, int client_fd)
 }
 
 int main() {
+    struct cputracker_bpf *skel = cputracker_bpf__open_and_load();
+    if (!skel) {
+        std::cerr << "Error loading BPF object" << std::endl;
+        return 1;
+    }
+
+    int err = cputracker_bpf__attach(skel);
+    if (err) {
+        std::cerr << "Failed to attach BPF program" << std::endl;
+        cputracker_bpf__destroy(skel);
+        return 1;
+    }
+
+    std::cout << "BPF program loaded and attached" << std::endl;
+
+    std::cout<<"Program loaded and attached"<<std::endl;
     unlink(SOCKET_PATH);  // Remove existing
 
     int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -91,5 +108,6 @@ int main() {
         }
 
         close(client_fd);
+        cputracker_bpf__destroy(skel);
     }
 }
