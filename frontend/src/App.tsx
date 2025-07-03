@@ -1,20 +1,26 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+import { RamMonitor } from './pages/RamMonitor';
+import { NetworkMonitor } from './pages/NetworkMonitor';
+
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // <-- Import Navigate
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { NetworkMonitor } from './pages/NetworkMonitor';
-import { RamMonitor } from './pages/RamMonitor';
+import { HomePage } from './pages/HomePage';
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/network" element={<NetworkMonitor />} />
-          <Route path="/ram" element={<RamMonitor />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+
+        <Route path="/about" element={<Navigate to="/#about" replace />} />
+
+        <Route element={<Layout />}>
+          <Route path="/cpu" element={<Dashboard />} />
+           <Route path="/ram" element={<RamMonitor />} />
+           <Route path="/network" element={<NetworkMonitor />} />
+        </Route>
+      </Routes>
     </Router>
   );
 }
