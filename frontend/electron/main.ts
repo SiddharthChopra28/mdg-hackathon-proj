@@ -123,10 +123,15 @@ function registerIpcHandlers() {
   ipcMain.handle('network:set-speed-cap', async (_, appName: string, speedMBps: number) => {
     return await networkSocketClient.setSpeedCap(appName, speedMBps);
   });
-
+  ipcMain.handle('network:get-usage-overall', async () => {
+    console.log("request for network overall being sent");
+    return await networkSocketClient.networkOverall();
+  })
+  
   ipcMain.handle('network:reset-cap', async (_, appName: string) => {
     return await networkSocketClient.resetCap(appName);
   });
+
   ipcMain.handle('ram:get-system-usage', async () => {
     try {
       return await ramSocketClient.getSystemRamUsage();

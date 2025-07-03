@@ -31,8 +31,11 @@ export const useNetworkData = () => {
       // TODO: Replace with actual socket calls when network socket is implemented
       if (window.electronAPI && window.electronAPI.network) {
         const apps = await window.electronAPI.network.getNetworkUsage();
+        const networkDataOverall = await window.electronAPI.network.getOverall();
         console.log("network data:", apps);
+        console.log("overall network data: ", networkDataOverall);
         setAppUsage(apps);
+        setNetworkData(networkDataOverall);
 
         // You can keep or remove the mock variation for `networkData`:
         setNetworkData(prev => ({

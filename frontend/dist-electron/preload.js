@@ -15,7 +15,8 @@ const electronAPI = {
   network: {
     getNetworkUsage: () => electron.ipcRenderer.invoke("network:get-usage"),
     setSpeedCap: (appName, speedMBps) => electron.ipcRenderer.invoke("network:set-speed-cap", appName, speedMBps),
-    resetCap: (appName) => electron.ipcRenderer.invoke("network:reset-cap", appName)
+    resetCap: (appName) => electron.ipcRenderer.invoke("network:reset-cap", appName),
+    getOverall: () => electron.ipcRenderer.invoke("network:get-usage-overall")
   },
   ram: {
     getSystemRamUsage: () => electron.ipcRenderer.invoke("ram:get-system-usage"),
