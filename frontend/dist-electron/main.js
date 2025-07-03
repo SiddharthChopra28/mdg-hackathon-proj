@@ -134,6 +134,104 @@ class SocketClient {
     }
   }
 }
+const NETWORK_SOCKET_PATH = "/tmp/network_optimizer.sock";
+class NetworkSocketClient {
+  async sendCommand(command) {
+    return new Promise((resolve, reject) => {
+      const client = net__namespace.createConnection(NETWORK_SOCKET_PATH);
+      client.on("connect", () => {
+        client.write(JSON.stringify(command));
+      });
+      client.on("data", (data) => {
+        try {
+          const response = data.toString().trim();
+          if (response.startsWith("{") || response.startsWith("[")) {
+            resolve(JSON.parse(response));
+          } else {
+            resolve(response);
+          }
+        } catch (error) {
+          resolve(data.toString().trim());
+        }
+        client.end();
+      });
+      client.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  // TODO: Register this endpoint in main.ts
+  // Endpoint: network:get-usage
+  async getNetworkUsage() {
+    try {
+      const result = await this.sendCommand({ action: "network_get_usage" });
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error getting network usage:", error);
+      return [];
+    }
+  }
+  // TODO: Register this endpoint in main.ts  
+  // Endpoint: network:set-speed-cap
+  async setSpeedCap(appName, speedMBps) {
+    try {
+      const result = await this.sendCommand({
+        action: "network_set_speed_cap",
+        app_name: appName,
+        speed_mbps: speedMBps
+      });
+      return result === "Speed cap set";
+    } catch (error) {
+      console.error("Error setting speed cap:", error);
+      return false;
+    }
+  }
+  // TODO: Register this endpoint in main.ts
+  // Endpoint: network:reset-cap  
+  async resetCap(appName) {
+    try {
+      const result = await this.sendCommand({
+        action: "network_reset_cap",
+        app_name: appName
+      });
+      return result === "Speed cap reset";
+    } catch (error) {
+      console.error("Error resetting speed cap:", error);
+      return false;
+    }
+  }
+}
+const RAM_SOCKET_PATH = "/tmp/ram_optimizer.sock";
+class RamSocketClient {
+  async sendCommand(command) {
+    return new Promise((resolve, reject) => {
+      const client = net__namespace.createConnection(RAM_SOCKET_PATH);
+      client.on("connect", () => {
+        client.write(JSON.stringify(command));
+      });
+      client.on("data", (data) => {
+        try {
+          const response = data.toString().trim();
+          resolve(JSON.parse(response));
+        } catch {
+          resolve(data.toString().trim());
+        }
+        client.end();
+      });
+      client.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  // 🧠 RAM usage summary
+  async getSystemRamUsage() {
+    return this.sendCommand({ action: "ram:get-system-usage" });
+  }
+  // 📋 Top RAM-consuming processes
+  async getTopRamProcesses() {
+    return this.sendCommand({ action: "ram:get-top-processes" });
+  }
+}
 const __dirname$1 = path.dirname(node_url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href));
 process.env.APP_ROOT = path.join(__dirname$1, "../..");
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
@@ -142,6 +240,8 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win = null;
 let socketClient;
+let networkSocketClient;
+let ramSocketClient;
 function createWindow() {
   win = new electron.BrowserWindow({
     width: 1400,
@@ -169,9 +269,16 @@ function createWindow() {
   }
 }
 electron.app.whenReady().then(() => {
-  createWindow();
-  socketClient = new SocketClient();
-  registerIpcHandlers();
+  try {
+    createWindow();
+    socketClient = new SocketClient();
+    networkSocketClient = new NetworkSocketClient();
+    ramSocketClient = new RamSocketClient();
+    registerIpcHandlers();
+    console.log("IPC handlers registered.");
+  } catch (err) {
+    console.error("Error during app startup:", err);
+  }
 });
 electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -208,6 +315,20 @@ function registerIpcHandlers() {
   });
   electron.ipcMain.handle("cpu:remove-whitelist", async (_, name) => {
     return await socketClient.removeFromWhitelist(name);
+  });
+  electron.ipcMain.handle("ram:get-system-usage", async () => {
+    try {
+      return await ramSocketClient.getSystemRamUsage();
+    } catch (err) {
+      return { error: "Failed to get RAM usage", details: err.message };
+    }
+  });
+  electron.ipcMain.handle("ram:get-top-processes", async () => {
+    try {
+      return await ramSocketClient.getTopRamProcesses();
+    } catch (err) {
+      return { error: "Failed to get process list", details: err.message };
+    }
   });
 }
 exports.MAIN_DIST = MAIN_DIST;

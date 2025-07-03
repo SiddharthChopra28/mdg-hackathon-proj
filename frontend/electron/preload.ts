@@ -17,6 +17,11 @@ export interface IElectronAPI {
   //   setSpeedCap: (appName: string, speedMBps: number) => Promise<boolean>;
   //   resetCap: (appName: string) => Promise<boolean>;
   // };
+
+  ram: {
+    getSystemRamUsage: () => Promise<any>;
+    getTopRamProcesses: () => Promise<any[]>;
+  }
 }
 
 const electronAPI: IElectronAPI = {
@@ -36,6 +41,11 @@ const electronAPI: IElectronAPI = {
   //   setSpeedCap: (appName: string, speedMBps: number) => ipcRenderer.invoke('network:set-speed-cap', appName, speedMBps),
   //   resetCap: (appName: string) => ipcRenderer.invoke('network:reset-cap', appName),
   // },
+
+  ram: {
+    getSystemRamUsage: () => ipcRenderer.invoke('ram:get-system-usage'),
+    getTopRamProcesses: () => ipcRenderer.invoke('ram:get-top-processes')
+  }
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
