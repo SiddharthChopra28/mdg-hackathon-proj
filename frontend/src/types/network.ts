@@ -7,8 +7,9 @@ export interface NetworkData {
 }
 
 export interface AppUsage {
-  name: string;
-  usage: number; // in KB
+  app_name: string;
+  download_bytes: number; // in KB
+  upload_bytes: number;
 }
 
 export interface TrafficType {

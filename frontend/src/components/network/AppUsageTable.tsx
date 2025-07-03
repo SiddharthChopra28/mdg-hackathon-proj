@@ -48,7 +48,8 @@ export const AppUsageTable: React.FC<AppUsageTableProps> = ({
           <thead>
             <tr className="text-left text-gray-400 text-sm border-b border-gray-700">
               <th className="pb-3">App Name</th>
-              <th className="pb-3">Usage</th>
+              <th className="pb-3">Upload</th>
+              <th className="pb-3">Download</th>
               <th className="pb-3">Speed Cap (MB/s)</th>
               <th className="pb-3">Actions</th>
             </tr>
@@ -56,14 +57,15 @@ export const AppUsageTable: React.FC<AppUsageTableProps> = ({
           <tbody>
             {apps.map((app, index) => (
               <tr key={index} className="border-b border-gray-700 last:border-b-0">
-                <td className="py-4 text-white">{app.name}</td>
-                <td className="py-4 text-white">{formatBytes(app.usage * 1024)}</td>
+                <td className="py-4 text-white">{app.app_name}</td>
+                <td className="py-4 text-white">{formatBytes(app.upload_bytes)}</td>
+                <td className="py-4 text-white">{formatBytes(app.download_bytes)}</td>
                 <td className="py-4">
                   <input
                     type="number"
                     placeholder="Enter MB/s"
-                    value={speedInputs[app.name] || ''}
-                    onChange={(e) => handleSpeedInputChange(app.name, e.target.value)}
+                    value={speedInputs[app.app_name] || ''}
+                    onChange={(e) => handleSpeedInputChange(app.app_name, e.target.value)}
                     className="bg-gray-700 text-white px-3 py-1 rounded border border-gray-600 w-24 text-sm"
                     min="0"
                     step="0.1"
@@ -72,13 +74,13 @@ export const AppUsageTable: React.FC<AppUsageTableProps> = ({
                 <td className="py-4">
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleSetSpeedCap(app.name)}
+                      onClick={() => handleSetSpeedCap(app.app_name)}
                       className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm transition-colors"
                     >
                       Set Cap
                     </button>
                     <button
-                      onClick={() => handleResetCap(app.name)}
+                      onClick={() => handleResetCap(app.app_name)}
                       className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors flex items-center space-x-1"
                     >
                       <RotateCcw className="w-3 h-3" />

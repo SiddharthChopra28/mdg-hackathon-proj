@@ -57,8 +57,8 @@ app.whenReady().then(() => {
     socketClient = new SocketClient();
     networkSocketClient = new NetworkSocketClient();
     ramSocketClient = new RamSocketClient();
-
     registerIpcHandlers();
+
     console.log("IPC handlers registered.");
   } catch (err) {
     console.error("Error during app startup:", err);
@@ -116,17 +116,22 @@ function registerIpcHandlers() {
   // TODO: Network Socket Endpoints - Register these when network socket is ready
   // These endpoints will communicate with /tmp/network_optimizer.sock
 
-  // ipcMain.handle('network:get-usage', async () => {
-  //   return await networkSocketClient.getNetworkUsage();
-  // });
+  ipcMain.handle('network:get-usage', async () => {
+    return await networkSocketClient.getNetworkUsage();
+  });
 
-  // ipcMain.handle('network:set-speed-cap', async (_, appName: string, speedMBps: number) => {
-  //   return await networkSocketClient.setSpeedCap(appName, speedMBps);
-  // });
+  ipcMain.handle('network:set-speed-cap', async (_, appName: string, speedMBps: number) => {
+    return await networkSocketClient.setSpeedCap(appName, speedMBps);
+  });
+  ipcMain.handle('network:get-usage-overall', async () => {
+    console.log("request for network overall being sent");
+    return await networkSocketClient.networkOverall();
+  })
+  
+  ipcMain.handle('network:reset-cap', async (_, appName: string) => {
+    return await networkSocketClient.resetCap(appName);
+  });
 
-  // ipcMain.handle('network:reset-cap', async (_, appName: string) => {
-  //   return await networkSocketClient.resetCap(appName);
-  // });
   ipcMain.handle('ram:get-system-usage', async () => {
     try {
       return await ramSocketClient.getSystemRamUsage();

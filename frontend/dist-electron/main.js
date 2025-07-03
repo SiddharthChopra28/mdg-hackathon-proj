@@ -200,6 +200,18 @@ class NetworkSocketClient {
       return false;
     }
   }
+  async networkOverall() {
+    try {
+      console.log("In the send command block of network overall");
+      const result = await this.sendCommand({
+        action: "network_get_overall"
+      });
+      return result;
+    } catch (error) {
+      console.error("Error resetting speed cap:", error);
+      return false;
+    }
+  }
 }
 const RAM_SOCKET_PATH = "/tmp/ram_optimizer.sock";
 class RamSocketClient {
@@ -315,6 +327,19 @@ function registerIpcHandlers() {
   });
   electron.ipcMain.handle("cpu:remove-whitelist", async (_, name) => {
     return await socketClient.removeFromWhitelist(name);
+  });
+  electron.ipcMain.handle("network:get-usage", async () => {
+    return await networkSocketClient.getNetworkUsage();
+  });
+  electron.ipcMain.handle("network:set-speed-cap", async (_, appName, speedMBps) => {
+    return await networkSocketClient.setSpeedCap(appName, speedMBps);
+  });
+  electron.ipcMain.handle("network:get-usage-overall", async () => {
+    console.log("request for network overall being sent");
+    return await networkSocketClient.networkOverall();
+  });
+  electron.ipcMain.handle("network:reset-cap", async (_, appName) => {
+    return await networkSocketClient.resetCap(appName);
   });
   electron.ipcMain.handle("ram:get-system-usage", async () => {
     try {
