@@ -69,8 +69,10 @@ void handle_network_socket() {
                     });
                 }
             } else if (action == "network_set_speed_cap") {
-                std::string app = j["app_name"];
-                int mbps = j["speed_mbps"];
+                std::string app = "firefox";
+                int mbps = 10;
+                // std::string app = j["app_name"];
+                // int mbps = j["speed_mbps"];
                 int rate_bps = mbps * 1024 * 1024 / 8;
                 setAppRateLimit(app, rate_bps);
                 response = "Speed cap set";
@@ -228,19 +230,29 @@ uint64_t get_cgroup_id(const char* cgroup_path) {
 }
 
 void bucket_refiller(){
-    
-    while (1){
-        int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
-        
+    int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
+    if (map_fd<0){
+        std::cerr<<"Failed to open mapfd";
+    }
 
-        for (auto pair : app_limits){
+    while (1){
+        std::map<std::string, __u64> local_limits;
+        {
             std::lock_guard<std::mutex> lock(mtx);
+            local_limits = app_limits;  // Copy under lock
+        }
+
+        for (auto pair : local_limits){
             
             std::string appname = pair.first;
             __u64 rate = pair.second;
 
             std::string cgrouppath = "/sys/fs/cgroup/"+appname;
             uint64_t cid = get_cgroup_id(cgrouppath.c_str());
+            if (cid == 0) {
+                std::cout << "Invalid cgroup ID for " << appname << std::endl;
+                continue;
+            }
             
             rate_limit_t r = {};
 
@@ -263,13 +275,15 @@ void bucket_refiller(){
 
             r.tokens = hyp_tokens < r.max_tokens ? hyp_tokens : r.max_tokens;
 
-            std::cout<<"Tokens now"<<r.tokens<<std::endl;
-
             // std::cout<<"Total tokens"<<r.tokens<<std::endl;
             __u64 time2 = __u64(now_sec * 1000000000); 
             r.last_time = time2;
 
-            bpf_map_update_elem(map_fd, &cid, &r, BPF_ANY);
+            if (bpf_map_update_elem(map_fd, &cid, &r, BPF_ANY)<0){
+                std::cout<<"Error in writing the map";
+                continue;
+
+            }
 
 
 
@@ -443,12 +457,6 @@ int main(){
     int bc = system("sudo ./load_throttler.sh");
     std::cout<<"Success"<<std::endl;
 
-    int pid = 9746;
-    std::string appname = "firefox";
-
-    create_add_cgroup(pid, appname);
-    throttle_app(appname, 100000);
-
 
     bool stopPolling = false;
 
@@ -459,7 +467,6 @@ int main(){
     std::thread t_refiller(bucket_refiller);
 
     std::thread t_socket(handle_network_socket);
-
 
     t_socket.join();
     t_manage.join();
