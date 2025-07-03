@@ -1,62 +1,113 @@
-#include<iostream>
-#include<sys/syscall.h>
-#include<unistd.h>
-#include<thread>
-#include<vector>
-#include<map>
-#include<limits.h>
-#include<cstdlib>
-#include <net/if.h>
-#include<array>
-#include<sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include<fstream>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include "nlohmann_json.hpp"
+#include <thread>
+#include <future>
+#include <fstream>
+#include <csignal>
+#include "network.hpp"
 
-extern "C"{
-    #include "network.skel.h"
-    // #include "throttler.skel.h"
-    #include <bpf/bpf.h>
+void handle_network_socket() {
+    const char* SOCKET_PATH = "/tmp/network_optimizer.sock";
+    
+    // Remove old socket if exists
+    unlink(SOCKET_PATH);
+
+    int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("socket creation failed");
+        return;
+    }
+
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, SOCKET_PATH);
+
+    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("bind failed");
+        close(server_fd);
+        return;
+    }
+
+    // Allow non-root processes to connect
+    chmod(SOCKET_PATH, 0666);
+
+    if (listen(server_fd, 5) < 0) {
+        perror("listen failed");
+        close(server_fd);
+        return;
+    }
+
+    std::cout << "[+] Network socket server started on " << SOCKET_PATH << std::endl;
+
+    while (true) {  
+        int client_fd = accept(server_fd, nullptr, nullptr);
+        if (client_fd < 0) {
+            perror("accept failed");
+            continue;
+        }
+
+        char buffer[4096] = {0};
+        ssize_t len = read(client_fd, buffer, sizeof(buffer));
+        if (len <= 0) {
+            close(client_fd);
+            continue;
+        }
+
+        try {
+            auto j = nlohmann::json::parse(std::string(buffer, len));
+            std::string action = j["action"];
+            nlohmann::json response;
+
+            if (action == "network_get_usage") {
+                auto stat_map = sendNetworkStatsPerPID();
+                for (const auto& [app, usage] : stat_map) {
+                    response.push_back({
+                        {"app_name", app},
+                        {"upload_bytes", usage.first},
+                        {"download_bytes", usage.second}
+                    });
+                }
+            } else if (action == "network_set_speed_cap") {
+                std::string app = j["app_name"];
+                int mbps = j["speed_mbps"];
+                int rate_bps = mbps * 1024 * 1024 / 8;
+                setAppRateLimit(app, rate_bps);
+                response = "Speed cap set";
+            } else if (action == "network_reset_cap") {
+                std::string app = j["app_name"];
+                resetAppRateLimit(app);
+                response = "Speed cap reset";
+            } else {
+                response = "Unknown action";
+            }
+
+            std::string resp_str = response.dump();
+            ssize_t bytes_written = write(client_fd, resp_str.c_str(), resp_str.size());
+            if (bytes_written < 0) {
+                perror("write failed (response)");
+            }
+        } catch (std::exception& e) {
+            std::string err = std::string("Error: ") + e.what();
+            ssize_t err_written = write(client_fd, err.c_str(), err.size());
+            if (err_written < 0) {
+                perror("write failed (error response)");
+            }
+        }
+
+        close(client_fd);
+    }
+
+    close(server_fd);
+    unlink(SOCKET_PATH);
 }
 
-typedef struct net_data{
-    int pid;
-    unsigned long long timestamp_ns;
-    int bytes; // + for sent, - for recvd
-} net_data;
 
-typedef struct data_t{
-    int bytes;
-    unsigned long long timestamp_ns;
-}data_t;
-
-uint64_t get_kernel_time_ns(){
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    return ts.tv_sec*1000000000ULL + ts.tv_nsec;
-}
-
-typedef struct rate_limit{
-    __u64 rate; // bytes per sec
-    __u64 max_tokens; 
-    __u64 tokens;
-    __u64 last_time;
-
-} rate_limit_t;
-
-
-
-
-std::map<std::pair<int, std::string>, std::vector<data_t>> pid_wise_map;
-
-std::vector<data_t> overall_vector;
-
-std::map<std::string, long int> app_limits; 
 
 
 void maintainer(){
     
-    uint64_t curr_time = get_kernel_time_ns();
+    __u64 curr_time = get_kernel_time_ns();
 
     for (auto it = overall_vector.begin(); it != overall_vector.end();){
         if (curr_time - it->timestamp_ns > 1000000000ULL){
@@ -177,15 +228,63 @@ uint64_t get_cgroup_id(const char* cgroup_path) {
 }
 
 void bucket_refiller(){
-    int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
     
-    for (auto pair : app_limits){
-        std::string appname = 
+    while (1){
+        int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
+        
+
+        for (auto pair : app_limits){
+            std::lock_guard<std::mutex> lock(mtx);
+            
+            std::string appname = pair.first;
+            __u64 rate = pair.second;
+
+            std::string cgrouppath = "/sys/fs/cgroup/"+appname;
+            uint64_t cid = get_cgroup_id(cgrouppath.c_str());
+            
+            rate_limit_t r = {};
+
+            if (bpf_map_lookup_elem(map_fd, &cid, &r) !=0){
+                std::cout<<"Error in reading the map";
+                continue;
+            }
+            
+            long double last_time = ((long double)r.last_time)/1000000000;
+
+            r.rate = pair.second;
+
+            auto now = std::chrono::steady_clock::now();
+            long double now_sec = std::chrono::duration_cast<std::chrono::duration<long double>>(now.time_since_epoch()).count();
+
+            
+            long double delta_sec = now_sec - last_time;
+
+            __u64 hyp_tokens = r.tokens + (delta_sec * r.rate)  ;
+
+            r.tokens = hyp_tokens < r.max_tokens ? hyp_tokens : r.max_tokens;
+
+            std::cout<<"Tokens now"<<r.tokens<<std::endl;
+
+            // std::cout<<"Total tokens"<<r.tokens<<std::endl;
+            __u64 time2 = __u64(now_sec * 1000000000); 
+            r.last_time = time2;
+
+            bpf_map_update_elem(map_fd, &cid, &r, BPF_ANY);
+
+
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+
+
+        }
+
     }
 
 }
 
-void throttle_app(std::string& appname){
+void throttle_app(std::string& appname, int ratelimit){
+    std::lock_guard<std::mutex> lock(mtx);
 
     int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
 
@@ -193,13 +292,23 @@ void throttle_app(std::string& appname){
     uint64_t cid = get_cgroup_id(cgrouppath.c_str());
 
     rate_limit_t r = {};
-    r.rate = 1000000; //1mbps
-    r.max_tokens = 1000000; // burst bytes- keeping same as rate ie burst window = 1s
-    r.tokens = 1000000; // initially bucket full hai
-    r.last_time = get_kernel_time_ns();
+    r.rate = ratelimit; // in bytes /s
+    r.max_tokens = ratelimit/100 < 100 ? 100 : ratelimit/100; // burst bytes- keeping same as rate ie burst window = 1s
+    r.tokens = r.max_tokens; // initially bucket full hai
+
+    auto now = std::chrono::system_clock::now();
+    long double time_sec = std::chrono::duration_cast<std::chrono::duration<long double>>(now.time_since_epoch()).count();
+    std::cout<<time_sec<<std::endl;
+    __u64 time = (__u64)(time_sec*1000000000);
+    r.last_time = time ; // in nanoseconds
+
+    app_limits.insert({appname, r.rate});
 
     bpf_map_update_elem(map_fd, &cid, &r, BPF_ANY);
-    
+    rate_limit s = {};
+    bpf_map_lookup_elem(map_fd, &cid, &s);
+
+
 }
 
 
@@ -243,9 +352,75 @@ int create_add_cgroup(int& pid, std::string& appname){
 
 }
 
-int delete_cgroup(int& pid){
-    return 0;
+std::map<std::string, std::pair<int, int>> sendNetworkStatsPerPID(){
+    std::map<std::string, std::pair<int, int>>  retmap;    
+    // pair has upload, download
+    for (auto pair: pid_wise_map){
+        std::pair<int, int> tempair;
+        int uploads = 0;
+        int downloads = 0;
+        for (auto entry: pair.second){
+            if (entry.bytes>0){
+                uploads+=entry.bytes;
+            }
+            else{
+                downloads -= entry.bytes;
+            }
+        }
+        tempair.first = uploads;
+        tempair.second = downloads;
+        
+        retmap.insert({pair.first.second, tempair});
+    }
+    return retmap;
 }
+
+std::pair<int, int> sendNetworkStatsOverall(){
+    std::pair<int, int> tempair;
+    int uploads = 0;
+    int downloads = 0;
+    for (auto entry: overall_vector){
+        if (entry.bytes>0){
+            uploads+=entry.bytes;
+        }
+        else{
+            downloads -= entry.bytes;
+        }
+
+    }
+    tempair.first = uploads;
+    tempair.second = downloads;
+
+    return tempair;
+}
+
+std::vector<int> get_pids_of_app(std::string appname){
+    std::vector<int> retvec;
+    for (auto entry: pid_wise_map){
+        if (entry.first.second == appname){
+            retvec.push_back(entry.first.first);
+        }
+    }
+    return retvec;
+}
+
+void setAppRateLimit(std::string appname, int rate){
+    // rate is in bytes/sec
+    auto pids = get_pids_of_app(appname);
+    for (auto pid : pids){
+        create_add_cgroup(pid, appname);
+    }
+    throttle_app(appname, rate);
+}
+
+void cleanup(){
+    int bc = system("sudo ./unload_throttler.sh");
+}
+
+void resetAppRateLimit(std::string appname){
+    throttle_app(appname, 0);
+}
+
 
 
 int main(){
@@ -268,11 +443,11 @@ int main(){
     int bc = system("sudo ./load_throttler.sh");
     std::cout<<"Success"<<std::endl;
 
-    int pid = 4299;
+    int pid = 9746;
     std::string appname = "firefox";
 
     create_add_cgroup(pid, appname);
-    throttle_app(appname);
+    throttle_app(appname, 100000);
 
 
     bool stopPolling = false;
@@ -281,8 +456,15 @@ int main(){
 
     std::thread t_publish(publisher);
 
+    std::thread t_refiller(bucket_refiller);
+
+    std::thread t_socket(handle_network_socket);
+
+
+    t_socket.join();
     t_manage.join();
     t_publish.join();
+    t_refiller.join();
 
 
     return 0;
