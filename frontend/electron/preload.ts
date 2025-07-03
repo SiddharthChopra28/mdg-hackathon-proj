@@ -12,11 +12,11 @@ export interface IElectronAPI {
     removeFromWhitelist: (name: string) => Promise<boolean>;
   };
   // TODO: Uncomment when network socket endpoints are registered in main.ts
-  // network: {
-  //   getNetworkUsage: () => Promise<any[]>;
-  //   setSpeedCap: (appName: string, speedMBps: number) => Promise<boolean>;
-  //   resetCap: (appName: string) => Promise<boolean>;
-  // };
+  network: {
+    getNetworkUsage: () => Promise<any[]>;
+    setSpeedCap: (appName: string, speedMBps: number) => Promise<boolean>;
+    resetCap: (appName: string) => Promise<boolean>;
+  };
 
   ram: {
     getSystemRamUsage: () => Promise<any>;
@@ -36,11 +36,11 @@ const electronAPI: IElectronAPI = {
     removeFromWhitelist: (name: string) => ipcRenderer.invoke('cpu:remove-whitelist', name),
   },
   // TODO: Uncomment when network socket endpoints are registered in main.ts
-  // network: {
-  //   getNetworkUsage: () => ipcRenderer.invoke('network:get-usage'),
-  //   setSpeedCap: (appName: string, speedMBps: number) => ipcRenderer.invoke('network:set-speed-cap', appName, speedMBps),
-  //   resetCap: (appName: string) => ipcRenderer.invoke('network:reset-cap', appName),
-  // },
+  network: {
+    getNetworkUsage: () => ipcRenderer.invoke('network:get-usage'),
+    setSpeedCap: (appName: string, speedMBps: number) => ipcRenderer.invoke('network:set-speed-cap', appName, speedMBps),
+    resetCap: (appName: string) => ipcRenderer.invoke('network:reset-cap', appName),
+  },
 
   ram: {
     getSystemRamUsage: () => ipcRenderer.invoke('ram:get-system-usage'),
