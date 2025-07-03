@@ -1,0 +1,6 @@
+clang -O2 -g -target bpf -c network.bpf.c -o network.bpf.o
+
+bpftool gen skeleton network.bpf.o > network.skel.h
+
+g++ -O2 -g network.cpp -o network -lbpf -lelf -lz
+
