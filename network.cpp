@@ -6,10 +6,17 @@
 #include<map>
 #include<limits.h>
 #include<cstdlib>
-
+#include <net/if.h>
+#include<array>
+#include<sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include<fstream>
 
 extern "C"{
     #include "network.skel.h"
+    #include "throttler.skel.h"
+    #include <bpf/bpf.h>
 }
 
 typedef struct net_data{
@@ -143,13 +150,13 @@ void publisher(){
             }
         }
 
-        std::cout<<"Upload speed (bytes/sec): "<<bytes_sent_per_sec<<std::endl;
-        std::cout<<"Download speed (bytes/sec): "<<bytes_recd_per_sec<<std::endl;
-        std::cout<<"-------"<<std::endl;
+        // std::cout<<"Upload speed (bytes/sec): "<<bytes_sent_per_sec<<std::endl;
+        // std::cout<<"Download speed (bytes/sec): "<<bytes_recd_per_sec<<std::endl;
+        // std::cout<<"-------"<<std::endl;
 
-        // for (auto pair: pid_wise_map){
-        //     std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
-        // }
+        for (auto pair: pid_wise_map){
+            std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
+        }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
@@ -157,17 +164,96 @@ void publisher(){
 }
 
 
+uint64_t get_cgroup_id(const char* cgroup_path) {
+    struct stat st;
+    if (stat(cgroup_path, &st) == 0) {
+        return st.st_ino;
+    } else {
+        perror("stat");
+        return 0;
+    }
+}
+
+
+void throttle_app(std::string& appname){
+
+    int map_fd = bpf_obj_get("/sys/fs/bpf/throttle_dir/token_buckets");
+    std::string cgrouppath = "/sys/fs/cgroup/"+appname;
+    uint64_t cid = get_cgroup_id(cgrouppath.c_str());
+
+    rate_limit_t r = {};
+    r.rate = 1000000; //1mbps
+    r.max_tokens = 1000000; // burst bytes- keeping same as rate ie burst window = 1s
+    r.tokens = 1000000; // initially bucket full hai
+    r.last_time = get_kernel_time_ns();
+
+    bpf_map_update_elem(map_fd, &cid, &r, BPF_ANY);
+    
+}
+
+
+int load_ebpf_for_cgroup(std::string& appname){
+    std::string cd = "sudo bpftool cgroup attach /sys/fs/cgroup/" + appname + " ingress bpf prog pinned /sys/fs/bpf/throttle_prog";
+    int bc = system(cd.c_str());
+    cd = "sudo bpftool cgroup attach /sys/fs/cgroup/" + appname + " egress bpf prog pinned /sys/fs/bpf/throttle_prog";
+    bc = system(cd.c_str());
+
+}
+
+bool is_pid_in_cgroup(int pid, const std::string& cgroup_name) {
+    std::ifstream cgroup_file("/proc/" + std::to_string(pid) + "/cgroup");
+    std::string line;
+    while (std::getline(cgroup_file, line)) {
+        auto pos = line.find("::");
+        if (pos != std::string::npos) {
+            std::string path = line.substr(pos + 2);
+            return path == cgroup_name || path == "/" + cgroup_name;
+        }
+    }
+    return false;
+}
+
+int create_add_cgroup(int& pid, std::string& appname){
+    
+    struct stat info;
+    std::string path = "/sys/fs/cgroup/"+appname;
+
+
+    if (!(stat(path.c_str(), &info) == 0 && S_ISDIR(info.st_mode))){
+        // make the cgroup
+        int mkc = system("sudo mount -t cgroup2 none /sys/fs/cgroup");
+        std::string cmd = "sudo mkdir /sys/fs/cgroup/" + appname;
+        mkc = system(cmd.c_str());
+    }
+
+    if (!is_pid_in_cgroup(pid, appname)){
+        std::string cmd2 = "echo " + std::to_string(pid) + " | sudo tee /sys/fs/cgroup/"+appname+"/cgroup.procs";
+        int mkc2 = system(cmd2.c_str());
+    }
+
+    std::string cmd = "bpftool cgroup show /sys/fs/cgroup/" + appname + " | grep -q throttle_prog";
+    int attached = system(cmd.c_str());
+
+    if (!attached){
+        load_ebpf_for_cgroup(appname);
+    }
+
+}
+
+int delete_cgroup(int& pid){
+
+}
 
 
 int main(){
 
-    struct network_bpf *skel = network_bpf__open_and_load();
-    if (!skel){
-        std::cerr<<"Error in opening bpf object";
+    struct network_bpf *network_skel = network_bpf__open_and_load();
+    if (!network_skel){
+        std::cerr<<"Error in opening network bpf object";
         return 1;
     }
 
-    int err = network_bpf__attach(skel);
+    int err = network_bpf__attach(network_skel);
     if (err){
         std::cerr<<"Failed to attach BPF program";
         return 1;
@@ -175,19 +261,23 @@ int main(){
 
     std::cout<<"Program loaded and attached"<<std::endl;
 
-    // also need to load the throttler ebpf program
-
-    int load = system("load_throttler.sh");
-    if (load){
-        std::cerr<<"Failed to load throttler ebpf program";
-        return 1;
-    }
-
+    std::string cd = "sudo bpftool prog loadall throttler.bpf.o /sys/fs/bpf/throttle_prog";
     
+
+    int bc = system(cd.c_str());
+    std::cout<<"Success"<<std::endl;
+    // test for pid 
+
+    int pid = 3598;
+    std::string appname = "brave";
+
+    create_add_cgroup(pid, appname);
+    throttle_app(appname);
+
 
     bool stopPolling = false;
 
-    std::thread t_manage (manageData, std::ref(stopPolling), skel);
+    std::thread t_manage (manageData, std::ref(stopPolling), network_skel);
 
     std::thread t_publish(publisher);
 
