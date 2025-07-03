@@ -57,8 +57,8 @@ app.whenReady().then(() => {
     socketClient = new SocketClient();
     networkSocketClient = new NetworkSocketClient();
     ramSocketClient = new RamSocketClient();
-
     registerIpcHandlers();
+
     console.log("IPC handlers registered.");
   } catch (err) {
     console.error("Error during app startup:", err);

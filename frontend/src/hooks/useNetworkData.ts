@@ -11,12 +11,8 @@ export const useNetworkData = () => {
   });
 
   const [appUsage, setAppUsage] = useState<AppUsage[]>([
-    { name: 'Microsoft Edge', usage: 37500 },
-    { name: 'Dropbox', usage: 362 },
-    { name: 'Microsoft Word', usage: 449.5 },
-    { name: 'Service Host', usage: 389.1 },
-    { name: 'lyt-ning.com', usage: 945.6 },
-    { name: 'www.google.com', usage: 296.4 },
+    { app_name: 'Microsoft Edge', download_bytes: 37500, upload_bytes: 123 },
+    { app_name: 'Dropbox', download_bytes: 362, upload_bytes: 2133 },
   ]);
 
   const [trafficTypes, setTrafficTypes] = useState<TrafficType[]>([
@@ -31,10 +27,11 @@ export const useNetworkData = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    try {
+    try { 
       // TODO: Replace with actual socket calls when network socket is implemented
       if (window.electronAPI && window.electronAPI.network) {
         const apps = await window.electronAPI.network.getNetworkUsage();
+        console.log("network data:", apps);
         setAppUsage(apps);
 
         // You can keep or remove the mock variation for `networkData`:
