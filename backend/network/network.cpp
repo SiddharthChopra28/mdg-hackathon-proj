@@ -69,10 +69,10 @@ void handle_network_socket() {
                     });
                 }
             } else if (action == "network_set_speed_cap") {
-                std::string app = "firefox";
-                int mbps = 10;
-                // std::string app = j["app_name"];
-                // int mbps = j["speed_mbps"];
+                // std::string app = "firefox";
+                // int mbps = 10;
+                std::string app = j["app_name"];
+                int mbps = j["speed_mbps"];
                 int rate_bps = mbps * 1024 * 1024 / 8;
                 setAppRateLimit(app, rate_bps);
                 response = "Speed cap set";
