@@ -4,7 +4,33 @@
 #include <dirent.h> // For reading directory contents
 #include <ctype.h>  // For isdigit()
 #include <unistd.h> // For sleep()
+#include <sstream>  // For stringstream
+//----------------
+// This function sends a JSON string to our central server
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <string>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
+void send_data_to_server(const std::string& json_output) {
+    const char* SOCKET_PATH = "/tmp/ram_orion.sock"; 
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return; 
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+        send(fd, json_output.c_str(), json_output.length(), 0);
+    }
+    
+    close(fd);
+}
+//--------------------
 struct ProcessInfo {
     int pid;
     char name[256];
@@ -111,31 +137,26 @@ int main() {
         }
         closedir(proc_dir);
 
-        // Sort the list of processes by RAM usage
         qsort(processes, process_count, sizeof(struct ProcessInfo), compareByRam);
 
-        // --- Display the results ---
-        
-        // ANSI escape code to clear the screen and move cursor to top-left
-        printf("\033[H\033[J");
-        
-        printf("--- Per-Process RAM Usage Monitor (Top 20) ---\n");
-        printf("%-10s %-12s %s\n", "PID", "RAM (MB)", "COMMAND");
-        printf("----------------------------------------------\n");
 
-        // Print the top 20 processes (or fewer if there aren't that many)
-        int display_count = process_count > 20 ? 20 : process_count;
-        for (int i = 0; i < display_count; i++) {
-            if (processes[i].ram_kb > 0) { // Only show processes actively using RAM
-                printf("%-10d %-12.2f %s\n",
-                       processes[i].pid,
-                       processes[i].ram_kb / 1024.0, // Convert KB to MB for display
-                       processes[i].name);
-            }
+        int display_count = (process_count < 20) ? process_count : 20;
+        json j;
+        j["name"] = "top 20 processes";
+        for (int i = 0; i < display_count; ++i) {
+            j[std::to_string(i + 1)] = {
+                {"pid", processes[i].pid},
+                {"ram_kb", processes[i].ram_kb},
+                {"name", processes[i].name}
+            };
         }
+        std::string json_output = j.dump();
         
-        fflush(stdout); // Ensure the output is printed immediately
-        sleep(2);       // Wait for 2 seconds before the next update
+        std::cout << json_output << std::endl;
+        
+        send_data_to_server(json_output);
+        fflush(stdout); // Ensure all output is flushed immediately
+        sleep(2);       
         
     }
     free(processes); 
