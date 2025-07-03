@@ -1,0 +1,1 @@
+{"bpf_skel":{"data_sections":[],"maps":[{"ident":"cpu_times","name":"cpu_times"},{"ident":"rodata","name":"cputrack.rodata"}],"obj_name":"cputracker_bpf","progs":[{"attach":"tracepoint/sched/sched_switch","link":true,"name":"handle_sched_switch"}]},"eunomia_version":"0.3.4"}
