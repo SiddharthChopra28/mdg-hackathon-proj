@@ -20,7 +20,7 @@ void handle_command(const json& j, int client_fd)
 
     if (action == "cpu_optimize") 
     {
-        string name = j["name"];
+        string name = j["name"];    
         string level = j["level"];
         bool success = optimize_process(name, level);
         response = success ? "Optimized\n" : "Failed\n";
@@ -55,7 +55,11 @@ void handle_command(const json& j, int client_fd)
     {
         json out = get_process_data();
         response = out.dump(2) + "\n";
-    }
+    }else if (action == "cpu_processor_info")
+    {
+        json out = get_processor_data();
+        response = out.dump(2) + '\n';
+    }   
     else 
     {
 
@@ -108,6 +112,6 @@ int main() {
         }
 
         close(client_fd);
-        cputracker_bpf__destroy(skel);
+        // cputracker_bpf__destroy(skel);  
     }
 }

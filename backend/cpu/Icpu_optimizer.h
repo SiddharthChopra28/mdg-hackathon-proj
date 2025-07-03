@@ -19,3 +19,4 @@ void add_to_whitelist_interface(const string& name);
 void remove_from_whitelist_interface(const string& name);
 set<string> show_all_whitelist();
 json get_process_data();
+json get_processor_data();
