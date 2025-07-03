@@ -179,7 +179,9 @@ uint64_t get_cgroup_id(const char* cgroup_path) {
 void bucket_refiller(){
     int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
     
-    for (auto pair : )
+    for (auto pair : app_limits){
+        std::string appname = 
+    }
 
 }
 

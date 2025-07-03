@@ -1,6 +1,4 @@
 .vscode/*
-*.o
-*.skel.json
 package.json
 ecc
 ecli
