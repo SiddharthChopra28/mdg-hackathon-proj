@@ -12,11 +12,11 @@ const electronAPI = {
     removeFromWhitelist: (name) => electron.ipcRenderer.invoke("cpu:remove-whitelist", name)
   },
   // TODO: Uncomment when network socket endpoints are registered in main.ts
-  // network: {
-  //   getNetworkUsage: () => ipcRenderer.invoke('network:get-usage'),
-  //   setSpeedCap: (appName: string, speedMBps: number) => ipcRenderer.invoke('network:set-speed-cap', appName, speedMBps),
-  //   resetCap: (appName: string) => ipcRenderer.invoke('network:reset-cap', appName),
-  // },
+  network: {
+    getNetworkUsage: () => electron.ipcRenderer.invoke("network:get-usage"),
+    setSpeedCap: (appName, speedMBps) => electron.ipcRenderer.invoke("network:set-speed-cap", appName, speedMBps),
+    resetCap: (appName) => electron.ipcRenderer.invoke("network:reset-cap", appName)
+  },
   ram: {
     getSystemRamUsage: () => electron.ipcRenderer.invoke("ram:get-system-usage"),
     getTopRamProcesses: () => electron.ipcRenderer.invoke("ram:get-top-processes")
