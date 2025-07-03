@@ -15,7 +15,7 @@
 
 extern "C"{
     #include "network.skel.h"
-    #include "throttler.skel.h"
+    // #include "throttler.skel.h"
     #include <bpf/bpf.h>
 }
 
@@ -51,13 +51,15 @@ std::map<std::pair<int, std::string>, std::vector<data_t>> pid_wise_map;
 
 std::vector<data_t> overall_vector;
 
+std::map<std::string, long int> app_limits; 
+
 
 void maintainer(){
     
     uint64_t curr_time = get_kernel_time_ns();
 
     for (auto it = overall_vector.begin(); it != overall_vector.end();){
-        if (curr_time - it->timestamp_ns > 1000000000){
+        if (curr_time - it->timestamp_ns > 1000000000ULL){
             it = overall_vector.erase(it);
         }
         else{
@@ -68,7 +70,7 @@ void maintainer(){
     for (auto& pair : pid_wise_map){
         if (pair.second.size() != 0){
             for (auto it = pair.second.begin(); it!=pair.second.end();){
-                if (curr_time - it->timestamp_ns > 1000000000){
+                if (curr_time - it->timestamp_ns > 1000000000ULL){
                     it = pair.second.erase(it);
                 }
                 else{
@@ -174,10 +176,17 @@ uint64_t get_cgroup_id(const char* cgroup_path) {
     }
 }
 
+void bucket_refiller(){
+    int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
+    
+    for (auto pair : )
+
+}
 
 void throttle_app(std::string& appname){
 
-    int map_fd = bpf_obj_get("/sys/fs/bpf/throttle_dir/token_buckets");
+    int map_fd = bpf_obj_get("/sys/fs/bpf/token_buckets");
+
     std::string cgrouppath = "/sys/fs/cgroup/"+appname;
     uint64_t cid = get_cgroup_id(cgrouppath.c_str());
 
@@ -191,14 +200,6 @@ void throttle_app(std::string& appname){
     
 }
 
-
-int load_ebpf_for_cgroup(std::string& appname){
-    std::string cd = "sudo bpftool cgroup attach /sys/fs/cgroup/" + appname + " ingress bpf prog pinned /sys/fs/bpf/throttle_prog";
-    int bc = system(cd.c_str());
-    cd = "sudo bpftool cgroup attach /sys/fs/cgroup/" + appname + " egress bpf prog pinned /sys/fs/bpf/throttle_prog";
-    bc = system(cd.c_str());
-
-}
 
 bool is_pid_in_cgroup(int pid, const std::string& cgroup_name) {
     std::ifstream cgroup_file("/proc/" + std::to_string(pid) + "/cgroup");
@@ -231,17 +232,17 @@ int create_add_cgroup(int& pid, std::string& appname){
         int mkc2 = system(cmd2.c_str());
     }
 
-    std::string cmd = "bpftool cgroup show /sys/fs/cgroup/" + appname + " | grep -q throttle_prog";
-    int attached = system(cmd.c_str());
+    std::string cd = "sudo bpftool cgroup attach /sys/fs/cgroup/ ingress pinned /sys/fs/bpf/throttle_prog/throttler_ingress";
+    int bc = system(cd.c_str());
+    cd = "sudo bpftool cgroup attach /sys/fs/cgroup/ egress pinned /sys/fs/bpf/throttle_prog/throttler_egress";
+    bc = system(cd.c_str());
 
-    if (!attached){
-        load_ebpf_for_cgroup(appname);
-    }
+    return 0;
 
 }
 
 int delete_cgroup(int& pid){
-
+    return 0;
 }
 
 
@@ -261,15 +262,12 @@ int main(){
 
     std::cout<<"Program loaded and attached"<<std::endl;
 
-    std::string cd = "sudo bpftool prog loadall throttler.bpf.o /sys/fs/bpf/throttle_prog";
     
-
-    int bc = system(cd.c_str());
+    int bc = system("sudo ./load_throttler.sh");
     std::cout<<"Success"<<std::endl;
-    // test for pid 
 
-    int pid = 3598;
-    std::string appname = "brave";
+    int pid = 4299;
+    std::string appname = "firefox";
 
     create_add_cgroup(pid, appname);
     throttle_app(appname);

@@ -1,14 +1,7 @@
 #!/bin/bash
 
-IFACE=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++) if ($i=="dev") print $(i+1); exit}')
+sudo bpftool prog loadall throttler.bpf.o /sys/fs/bpf/throttle_prog
 
-if [ -z "$IFACE" ]; then
-  echo "Could not detect network interface."
-  exit 1
-fi
+map_id=$(sudo bpftool map list | grep -A1 'name token_buckets' | head -n1 | cut -d: -f1)
 
-tc qdisc add dev "$IFACE" clsact 2>/dev/null
-
-tc filter add dev "$IFACE" egress bpf da obj throttler.bpf.o sec classifier
-
-exit 0
+sudo bpftool map pin id ${map_id} /sys/fs/bpf/token_buckets

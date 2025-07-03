@@ -9,6 +9,5 @@ struct rate_limit{
     u64 max_tokens; 
     u64 tokens;
     u64 last_time;
-
 };
 
