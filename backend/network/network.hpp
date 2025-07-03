@@ -33,7 +33,7 @@ typedef struct data_t{
 
 __u64 get_kernel_time_ns(){
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec*1000000000ULL + ts.tv_nsec;
 }
 

@@ -76,6 +76,7 @@ void handle_network_socket() {
                 int rate_bps = mbps * 1024 * 1024 / 8;
                 setAppRateLimit(app, rate_bps);
                 response = "Speed cap set";
+
             } else if (action == "network_reset_cap") {
                 std::string app = j["app_name"];
                 resetAppRateLimit(app);
@@ -108,10 +109,11 @@ void handle_network_socket() {
 
 
 void maintainer(){
-    
-    __u64 curr_time = get_kernel_time_ns();
 
     for (auto it = overall_vector.begin(); it != overall_vector.end();){
+
+        __u64 curr_time = get_kernel_time_ns();
+
         if (curr_time - it->timestamp_ns > 1000000000ULL){
             it = overall_vector.erase(it);
         }
@@ -121,8 +123,10 @@ void maintainer(){
     }
 
     for (auto& pair : pid_wise_map){
+
         if (pair.second.size() != 0){
             for (auto it = pair.second.begin(); it!=pair.second.end();){
+                __u64 curr_time = get_kernel_time_ns();
                 if (curr_time - it->timestamp_ns > 1000000000ULL){
                     it = pair.second.erase(it);
                 }
@@ -174,7 +178,7 @@ int ringbuf_datahandler(void* ctx, void* data, size_t data_sz){
 void manageData(bool& stopPolling, struct network_bpf* skel){
     struct ring_buffer* rb = NULL;
     rb = ring_buffer__new(bpf_map__fd(skel->maps.netdata_ringbuf), ringbuf_datahandler, NULL, NULL);
-
+    
     while (!stopPolling){
         int err = ring_buffer__poll(rb, 100);
         if (err == -EINTR){
@@ -185,9 +189,11 @@ void manageData(bool& stopPolling, struct network_bpf* skel){
             break;
         }
         maintainer();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     ring_buffer__free(rb);
 }
+
 
 void publisher(){
     while (true){
@@ -205,13 +211,19 @@ void publisher(){
             }
         }
 
+        // std::cout<<overall_vector.size()<<std::endl;
+
+
+        std::cout<<bytes_recd_per_sec<<std::endl;
+        std::cout<<bytes_sent_per_sec<<std::endl;
+
         // std::cout<<"Upload speed (bytes/sec): "<<bytes_sent_per_sec<<std::endl;
         // std::cout<<"Download speed (bytes/sec): "<<bytes_recd_per_sec<<std::endl;
         // std::cout<<"-------"<<std::endl;
 
-        for (auto pair: pid_wise_map){
-            std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
-        }
+        // for (auto pair: pid_wise_map){
+        //     std::cout<<pair.first.first<<" - "<<pair.first.second<<" - "<<std::endl;
+        // }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
@@ -374,15 +386,20 @@ std::map<std::string, std::pair<int, int>> sendNetworkStatsPerPID(){
         int uploads = 0;
         int downloads = 0;
         for (auto entry: pair.second){
+            std::cout<<entry.bytes<<std::endl;
             if (entry.bytes>0){
+                std::cout<<"updated uploads";
                 uploads+=entry.bytes;
             }
             else{
+                std::cout<<"updated downloads";
                 downloads -= entry.bytes;
             }
         }
         tempair.first = uploads;
         tempair.second = downloads;
+        std::cout<<tempair.first<<std::endl;
+        std::cout<<tempair.second<<std::endl;
         
         retmap.insert({pair.first.second, tempair});
     }
@@ -395,9 +412,11 @@ std::pair<int, int> sendNetworkStatsOverall(){
     int downloads = 0;
     for (auto entry: overall_vector){
         if (entry.bytes>0){
+            std::cout<<"updated uploads";
             uploads+=entry.bytes;
         }
         else{
+            std::cout<<"updated downloads";
             downloads -= entry.bytes;
         }
 
@@ -411,6 +430,7 @@ std::pair<int, int> sendNetworkStatsOverall(){
 std::vector<int> get_pids_of_app(std::string appname){
     std::vector<int> retvec;
     for (auto entry: pid_wise_map){
+        std::cout<<entry.first.first<<std::endl;
         if (entry.first.second == appname){
             retvec.push_back(entry.first.first);
         }
@@ -462,7 +482,7 @@ int main(){
 
     std::thread t_manage (manageData, std::ref(stopPolling), network_skel);
 
-    std::thread t_publish(publisher);
+    // std::thread t_publish(publisher);
 
     std::thread t_refiller(bucket_refiller);
 
@@ -470,7 +490,7 @@ int main(){
 
     t_socket.join();
     t_manage.join();
-    t_publish.join();
+    // t_publish.join();
     t_refiller.join();
 
 

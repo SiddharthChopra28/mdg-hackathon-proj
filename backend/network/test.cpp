@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 
 using json = nlohmann::json;
 
@@ -53,5 +53,5 @@ int main() {
     std::cout << "\nSending network_reset_cap..." << std::endl;
     send_request({{"action", "network_reset_cap"}, {"app_name", "firefox"}});
 
-    return 0;
+    return 0;   
 }
