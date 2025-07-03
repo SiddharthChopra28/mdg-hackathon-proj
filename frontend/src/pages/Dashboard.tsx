@@ -45,14 +45,11 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Section - Landscape Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* CPU Chart - Takes 2/3 of the width */}
         <div className="lg:col-span-2">
           <CPUChart data={cpuUsageHistory} processorInfo={processorInfo} />
         </div>
         
-        {/* System Stats - Takes 1/3 of the width */}
         <div>
           <SystemStats 
             processorInfo={processorInfo} 
@@ -62,7 +59,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Section - Side by Side Tables */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ProcessTable
           processes={processes}

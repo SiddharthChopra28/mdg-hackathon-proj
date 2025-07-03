@@ -1,7 +1,7 @@
 import React from 'react';
-import { Activity, Settings, Info, Home, Wifi, Brain } from 'lucide-react';
+import { Activity, Info, Home, Wifi, Brain } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-
+//
 export const Sidebar: React.FC = () => {
   const location = useLocation();
 
@@ -11,7 +11,7 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 h-screen sticky bg-gray-800 border-r border-gray-700 p-4" >
       <nav className="space-y-2">
         <Link
-          to="/"
+          to="/cpu"
           className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive('/') ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700'
             }`}
         >
@@ -34,19 +34,16 @@ export const Sidebar: React.FC = () => {
           <Brain className="w-5 h-5" />
           <span>Ram Monitor</span>
         </Link>
-
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+        
+        <Link to="/" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
           <Home className="w-5 h-5" />
-          <span>Dashboard</span>
-        </a>  
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
-          <Settings className="w-5 h-5" />
-          <span>Settings</span>
-        </a>
-        <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+          <span>HomePage</span>
+        </Link>  
+
+        <Link to="/about" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
           <Info className="w-5 h-5" />
           <span>About</span>
-        </a>
+        </Link>
       </nav>
     </aside>
   );

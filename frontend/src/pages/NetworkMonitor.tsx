@@ -33,20 +33,16 @@ export const NetworkMonitor: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Section - Landscape Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Network Chart - Takes 2/3 of the width */}
         <div className="lg:col-span-2">
           <NetworkChart data={networkData} />
         </div>
         
-        {/* Network Stats - Takes 1/3 of the width */}
         <div>
           <NetworkStats networkData={networkData} />
         </div>
       </div>
 
-      {/* Bottom Section - Side by Side Tables */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <AppUsageTable
           apps={appUsage}
