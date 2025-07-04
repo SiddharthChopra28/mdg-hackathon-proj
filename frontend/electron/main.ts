@@ -1,9 +1,14 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app } from 'electron';
+app.commandLine.appendSwitch('no-sandbox');
+
+import { BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { SocketClient } from './socket-client.js';
 import { NetworkSocketClient } from './network-socket-client.js';
 import { RamSocketClient } from './ram-socket-client.js';
+import fs from 'fs';
+import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +27,16 @@ let socketClient: SocketClient;
 let networkSocketClient: NetworkSocketClient;
 let ramSocketClient: RamSocketClient;
 
+const LOG_PATH = path.join(os.homedir(), 'cpu-monitor.log');
+const log = (msg: string) => fs.appendFileSync(LOG_PATH, `[${new Date().toISOString()}] ${msg}\n`);
+
+log(`APP_ROOT: ${process.env.APP_ROOT}`);
+log(`MAIN_DIST: ${MAIN_DIST}`);
+log(`RENDERER_DIST: ${RENDERER_DIST}`);
+log(`index.html exists: ${fs.existsSync(path.join(RENDERER_DIST, 'index.html'))}`);
+
 function createWindow() {
+  log(`Loading: ${VITE_DEV_SERVER_URL || path.join(RENDERER_DIST, 'index.html')}`);
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -52,6 +66,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
   try {
+
+
+
+
     createWindow();
 
     socketClient = new SocketClient();
@@ -127,7 +145,7 @@ function registerIpcHandlers() {
     console.log("request for network overall being sent");
     return await networkSocketClient.networkOverall();
   })
-  
+
   ipcMain.handle('network:reset-cap', async (_, appName: string) => {
     return await networkSocketClient.resetCap(appName);
   });

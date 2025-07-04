@@ -10,6 +10,10 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 h-screen sticky bg-gray-800 border-r border-gray-700 p-4" >
       <nav className="space-y-2">
+        <Link to="/" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+          <Home className="w-5 h-5" />
+          <span>HomePage</span>
+        </Link>  
         <Link
           to="/cpu"
           className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive('/') ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700'
@@ -35,10 +39,6 @@ export const Sidebar: React.FC = () => {
           <span>Ram Monitor</span>
         </Link>
         
-        <Link to="/" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
-          <Home className="w-5 h-5" />
-          <span>HomePage</span>
-        </Link>  
 
         <Link to="/about" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
           <Info className="w-5 h-5" />

@@ -1,27 +1,2 @@
-"use strict";
-const electron = require("electron");
-const electronAPI = {
-  cpu: {
-    getProcesses: () => electron.ipcRenderer.invoke("cpu:get-processes"),
-    getProcessorInfo: () => electron.ipcRenderer.invoke("cpu:get-processor-info"),
-    getWhitelist: () => electron.ipcRenderer.invoke("cpu:get-whitelist"),
-    optimize: (name, level) => electron.ipcRenderer.invoke("cpu:optimize", name, level),
-    restore: (name) => electron.ipcRenderer.invoke("cpu:restore", name),
-    restoreAll: () => electron.ipcRenderer.invoke("cpu:restore-all"),
-    addToWhitelist: (name) => electron.ipcRenderer.invoke("cpu:add-whitelist", name),
-    removeFromWhitelist: (name) => electron.ipcRenderer.invoke("cpu:remove-whitelist", name)
-  },
-  // TODO: Uncomment when network socket endpoints are registered in main.ts
-  network: {
-    getNetworkUsage: () => electron.ipcRenderer.invoke("network:get-usage"),
-    setSpeedCap: (appName, speedMBps) => electron.ipcRenderer.invoke("network:set-speed-cap", appName, speedMBps),
-    resetCap: (appName) => electron.ipcRenderer.invoke("network:reset-cap", appName),
-    getOverall: () => electron.ipcRenderer.invoke("network:get-usage-overall")
-  },
-  ram: {
-    getSystemRamUsage: () => electron.ipcRenderer.invoke("ram:get-system-usage"),
-    getTopRamProcesses: () => electron.ipcRenderer.invoke("ram:get-top-processes")
-  }
-};
-electron.contextBridge.exposeInMainWorld("electronAPI", electronAPI);
+"use strict";const e=require("electron"),o={cpu:{getProcesses:()=>e.ipcRenderer.invoke("cpu:get-processes"),getProcessorInfo:()=>e.ipcRenderer.invoke("cpu:get-processor-info"),getWhitelist:()=>e.ipcRenderer.invoke("cpu:get-whitelist"),optimize:(r,t)=>e.ipcRenderer.invoke("cpu:optimize",r,t),restore:r=>e.ipcRenderer.invoke("cpu:restore",r),restoreAll:()=>e.ipcRenderer.invoke("cpu:restore-all"),addToWhitelist:r=>e.ipcRenderer.invoke("cpu:add-whitelist",r),removeFromWhitelist:r=>e.ipcRenderer.invoke("cpu:remove-whitelist",r)},network:{getNetworkUsage:()=>e.ipcRenderer.invoke("network:get-usage"),setSpeedCap:(r,t)=>e.ipcRenderer.invoke("network:set-speed-cap",r,t),resetCap:r=>e.ipcRenderer.invoke("network:reset-cap",r),getOverall:()=>e.ipcRenderer.invoke("network:get-usage-overall")},ram:{getSystemRamUsage:()=>e.ipcRenderer.invoke("ram:get-system-usage"),getTopRamProcesses:()=>e.ipcRenderer.invoke("ram:get-top-processes")}};e.contextBridge.exposeInMainWorld("electronAPI",o);
 //# sourceMappingURL=preload.js.map
