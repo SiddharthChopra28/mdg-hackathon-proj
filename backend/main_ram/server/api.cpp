@@ -1,4 +1,3 @@
-// g++ -o ipc_server ipc_server.cpp -std=c++17
 #include "ipc_server.hpp"
 
 const char *SOCKET_PATH = "/tmp/ram_optimizer.sock";
@@ -13,7 +12,7 @@ void signal_handler(int signum)
 
 void cleanup()
 {
-    if (server_fd != -1)
+    if (server_fd != -1)    
         close(server_fd);
     unlink(SOCKET_PATH);
 }
@@ -144,96 +143,4 @@ json handle_top_processes()
     }
 
     return j;
-}
-
-int main()
-{
-    std::signal(SIGINT, signal_handler);
-    std::signal(SIGTERM, signal_handler);
-
-    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server_fd < 0)
-    {
-        perror("socket error");
-        return 1;
-    }
-
-    struct sockaddr_un server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sun_family = AF_UNIX;
-    strncpy(server_addr.sun_path, SOCKET_PATH, sizeof(server_addr.sun_path) - 1);
-
-    unlink(SOCKET_PATH);
-
-    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        perror("bind error");
-        cleanup();
-        return 1;
-    }
-
-    chmod(SOCKET_PATH, 0666); // Allow non-root clients
-
-    if (listen(server_fd, 5) < 0)
-    {
-        perror("listen error");
-        cleanup();
-        return 1;
-    }
-
-    std::cout << "RAM IPC Server listening on: " << SOCKET_PATH << std::endl;
-
-    while (running)
-    {
-        int client_fd = accept(server_fd, nullptr, nullptr);
-        if (client_fd < 0)
-        {
-            if (!running)
-                break;
-            perror("accept error");
-            continue;
-        }
-
-        char buffer[4096] = {0};
-        ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-        if (bytes_read > 0)
-        {
-            buffer[bytes_read] = '\0';
-            std::string input(buffer);
-            std::cout << "\n Received: " << input << std::endl;
-
-            try
-            {
-                json req = json::parse(input);
-                std::string action = req.value("action", "");
-                json res;
-
-                if (action == "ram:get-system-usage")
-                {
-                    res = handle_ram_usage();
-                }
-                else if (action == "ram:get-top-processes")
-                {
-                    res = handle_top_processes();
-                }
-                else
-                {
-                    res = {{"error", "Unknown action"}};
-                }
-
-                std::string out_str = res.dump();
-                write(client_fd, out_str.c_str(), out_str.size());
-            }
-            catch (...)
-            {
-                std::string err = "{\"error\":\"Invalid JSON input\"}";
-                write(client_fd, err.c_str(), err.size());
-            }
-        }
-
-        close(client_fd);
-    }
-
-    cleanup();
-    return 0;
 }

@@ -5,7 +5,22 @@
 #include <future>
 #include <fstream>
 #include <csignal>
-#include "network.hpp"
+#include "api.hpp"
+
+std::mutex mtx;
+
+std::map<std::pair<int, std::string>, std::vector<data_t>> pid_wise_map;
+
+std::vector<data_t> overall_vector;
+
+std::map<std::string, __u64> app_limits; 
+
+__u64 get_kernel_time_ns(){
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec*1000000000ULL + ts.tv_nsec;
+}
+
 
 void handle_network_socket()
 {
@@ -346,7 +361,7 @@ void throttle_app(std::string &appname, int ratelimit)
 
     rate_limit_t r = {};
     r.rate = ratelimit;                                           // in bytes /s
-    r.max_tokens = ratelimit / 10000 < 100 ? 100 : ratelimit / 10000; // burst bytes- keeping same as rate ie burst window = 1s
+    r.max_tokens = ratelimit / 100 < 100 ? 100 : ratelimit / 100; // burst bytes- keeping same as rate ie burst window = 1s
     r.tokens = r.max_tokens;                                      // initially bucket full hai
 
     auto now = std::chrono::system_clock::now();
@@ -479,10 +494,10 @@ void setAppRateLimit(std::string appname, int rate)
     throttle_app(appname, rate);
 }
 
-void cleanup()
-{
-    int bc = system("sudo ./unload_throttler.sh");
-}
+// void cleanup()
+// {
+//     int bc = system("sudo ./unload_throttler.sh");
+// }
 
 void resetAppRateLimit(std::string appname)
 {
@@ -491,7 +506,7 @@ void resetAppRateLimit(std::string appname)
 
 
 
-int main()
+int setup_network_prog()
 {
 
     struct network_bpf *network_skel = network_bpf__open_and_load();

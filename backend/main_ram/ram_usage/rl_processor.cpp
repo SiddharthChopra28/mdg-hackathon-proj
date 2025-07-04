@@ -28,7 +28,7 @@ void send_data_to_server(const std::string& json_output) {
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
         send(fd, json_output.c_str(), json_output.length(), 0);
-    } else {
+    } else {    
         std::cerr << "ERROR: Failed to connect to server." << std::endl;
     }
     
@@ -68,9 +68,9 @@ FILE *fp_meminfo, *fp_stats;
     std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
-int main() {
-    while (true) {
-        log_system_ram();
-    }
-    return 0;
-}
+// int main() {
+//     while (true) {
+//         log_system_ram();
+//     }
+//     return 0;
+// }

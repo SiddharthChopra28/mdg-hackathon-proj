@@ -60,105 +60,105 @@ int is_numeric(const char *s) {
     return 1;
 }
 
-int main() {
-    int capacity = 256;
+// int main() {
+//     int capacity = 256;
 
-    struct ProcessInfo *processes = (ProcessInfo *)malloc(capacity * sizeof(struct ProcessInfo));
-        if (!processes) {
-            perror("Failed to allocate initial memory");
-            return 1;
-        }
+//     struct ProcessInfo *processes = (ProcessInfo *)malloc(capacity * sizeof(struct ProcessInfo));
+//         if (!processes) {
+//             perror("Failed to allocate initial memory");
+//             return 1;
+//         }
 
-    while (1) {
-        int process_count = 0;
-        DIR *proc_dir; // handle to a directory
-        struct dirent *entry; // (directory entry) predefined struct to hold all info about a subdir or file in a directory
+//     while (1) {
+//         int process_count = 0;
+//         DIR *proc_dir; // handle to a directory
+//         struct dirent *entry; // (directory entry) predefined struct to hold all info about a subdir or file in a directory
         
-        proc_dir = opendir("/proc");
-        if (!proc_dir) {
-            perror("Failed to open /proc");
-            return 1;
-        }
+//         proc_dir = opendir("/proc");
+//         if (!proc_dir) {
+//             perror("Failed to open /proc");
+//             return 1;
+//         }
 
-        while ((entry = readdir(proc_dir)) != NULL) {
-            if (is_numeric(entry->d_name)) {//d_name is the name of the directory entry(file or subdir)
-//==================================================
-                if (process_count >= capacity) {
-                    // We are full. Double the capacity.
-                    capacity *= 2;
-                    struct ProcessInfo *new_processes = (ProcessInfo *)realloc(processes, capacity * sizeof(struct ProcessInfo));
-                    if (!new_processes) {
-                        perror("Failed to reallocate memory");
-                        free(processes); // Free the old buffer
-                        closedir(proc_dir);
-                        return 1;
-                    }
-                    processes = new_processes; // Point to the new, larger buffer
-                }
-//================================================== 
-                char path[512];
-                FILE *fp;
+//         while ((entry = readdir(proc_dir)) != NULL) {
+//             if (is_numeric(entry->d_name)) {//d_name is the name of the directory entry(file or subdir)
+// //==================================================
+//                 if (process_count >= capacity) {
+//                     // We are full. Double the capacity.
+//                     capacity *= 2;
+//                     struct ProcessInfo *new_processes = (ProcessInfo *)realloc(processes, capacity * sizeof(struct ProcessInfo));
+//                     if (!new_processes) {
+//                         perror("Failed to reallocate memory");
+//                         free(processes); // Free the old buffer
+//                         closedir(proc_dir);
+//                         return 1;
+//                     }
+//                     processes = new_processes; // Point to the new, larger buffer
+//                 }
+// //================================================== 
+//                 char path[512];
+//                 FILE *fp;
                 
-                // 1. Get RAM Usage from /proc/[pid]/status
-                snprintf(path, sizeof(path), "/proc/%s/status", entry->d_name);
-                fp = fopen(path, "r");
-                if (fp) {
-                    char line[256];
-                    long vmrss = 0;
-                    while (fgets(line, sizeof(line), fp)) {
-                        // VmRSS is the "Resident Set Size", the actual physical RAM used
-                        if (strncmp(line, "VmRSS:", 6) == 0) { // takes the first 6 characters of line and compares with "VmRSS:"
-                            sscanf(line, "VmRSS:\t%ld kB", &vmrss); //parses the line to extract the VmRSS value in vmrss
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                    processes[process_count].ram_kb = vmrss;
-                } else {
-                    continue; // Skip if we can't read status file
-                }
+//                 // 1. Get RAM Usage from /proc/[pid]/status
+//                 snprintf(path, sizeof(path), "/proc/%s/status", entry->d_name);
+//                 fp = fopen(path, "r");
+//                 if (fp) {
+//                     char line[256];
+//                     long vmrss = 0;
+//                     while (fgets(line, sizeof(line), fp)) {
+//                         // VmRSS is the "Resident Set Size", the actual physical RAM used
+//                         if (strncmp(line, "VmRSS:", 6) == 0) { // takes the first 6 characters of line and compares with "VmRSS:"
+//                             sscanf(line, "VmRSS:\t%ld kB", &vmrss); //parses the line to extract the VmRSS value in vmrss
+//                             break;
+//                         }
+//                     }
+//                     fclose(fp);
+//                     processes[process_count].ram_kb = vmrss;
+//                 } else {
+//                     continue; // Skip if we can't read status file
+//                 }
 
-                // 2. Get Process Name from /proc/[pid]/comm
-                snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
-                fp = fopen(path, "r");
-                if (fp) {
-                    fgets(processes[process_count].name, 
-                          sizeof(processes[process_count].name), fp);
-                    // Remove the trailing newline character from the name
-                    strtok(processes[process_count].name, "\n");
-                    fclose(fp);
-                } else {
-                    strcpy(processes[process_count].name, "N/A");
-                }
+//                 // 2. Get Process Name from /proc/[pid]/comm
+//                 snprintf(path, sizeof(path), "/proc/%s/comm", entry->d_name);
+//                 fp = fopen(path, "r");
+//                 if (fp) {
+//                     fgets(processes[process_count].name, 
+//                           sizeof(processes[process_count].name), fp);
+//                     // Remove the trailing newline character from the name
+//                     strtok(processes[process_count].name, "\n");
+//                     fclose(fp);
+//                 } else {
+//                     strcpy(processes[process_count].name, "N/A");
+//                 }
 
-                processes[process_count].pid = atoi(entry->d_name);
-                process_count++;
-            }
-        }
-        closedir(proc_dir);
+//                 processes[process_count].pid = atoi(entry->d_name);
+//                 process_count++;
+//             }
+//         }
+//         closedir(proc_dir);
 
-        qsort(processes, process_count, sizeof(struct ProcessInfo), compareByRam);
+//         qsort(processes, process_count, sizeof(struct ProcessInfo), compareByRam);
 
 
-        int display_count = (process_count < 20) ? process_count : 20;
-        json j;
-        j["name"] = "top 20 processes";
-        for (int i = 0; i < display_count; ++i) {
-            j[std::to_string(i + 1)] = {
-                {"pid", processes[i].pid},
-                {"ram_kb", processes[i].ram_kb},
-                {"name", processes[i].name}
-            };
-        }
-        std::string json_output = j.dump();
+//         int display_count = (process_count < 20) ? process_count : 20;
+//         json j;
+//         j["name"] = "top 20 processes";
+//         for (int i = 0; i < display_count; ++i) {
+//             j[std::to_string(i + 1)] = {
+//                 {"pid", processes[i].pid},
+//                 {"ram_kb", processes[i].ram_kb},
+//                 {"name", processes[i].name}
+//             };
+//         }
+//         std::string json_output = j.dump();
         
-        std::cout << json_output << std::endl;
+//         std::cout << json_output << std::endl;
         
-        send_data_to_server(json_output);
-        fflush(stdout); // Ensure all output is flushed immediately
-        sleep(2);       
+//         send_data_to_server(json_output);
+//         fflush(stdout); // Ensure all output is flushed immediately
+//         sleep(2);       
         
-    }
-    free(processes); 
-    return 0;
-}
+//     }
+//     free(processes); 
+//     return 0;
+// }

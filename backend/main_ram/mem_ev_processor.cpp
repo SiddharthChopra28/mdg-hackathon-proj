@@ -4,7 +4,7 @@
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
 #include <unistd.h> // For sleep
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 using json = nlohmann::json;
 //=========sockets========
 // This function sends a JSON string to our central server
@@ -46,7 +46,7 @@ void signal_handler(int signum) {
 
 // This is our callback function. It gets called by libbpf
 // every time a new event arrives from the kernel.
-void handle_event(void *ctx, int cpu, void *data, __u32 size) {
+std::string handle_event(void *ctx, int cpu, void *data, __u32 size) {
     struct ram_event_t *event = (ram_event_t *)data;
     json j;
     std::string json_output;
@@ -70,7 +70,8 @@ void handle_event(void *ctx, int cpu, void *data, __u32 size) {
         json_output = j.dump();
     }
     std::cout << "Event Data: " << json_output << std::endl;
-    send_data_to_server(json_output);
+    // send_data_to_server(json_output);
+    return json_output;
 }
 
 int main() {

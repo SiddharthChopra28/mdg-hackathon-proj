@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
+#include <thread>
 #include <nlohmann/json.hpp>
 #include <sys/stat.h> 
 #include "../cpu/Icpu_optimizer.h"
 #include "../../ebpf/cpu/cputracker.skel.h"
+#include "../network/api.hpp"
 
 using namespace std;
 using json = nlohmann::json;
@@ -69,7 +71,13 @@ void handle_command(const json& j, int client_fd)
     write(client_fd, response.c_str(), response.size());
 }
 
+
+
 int main() {
+
+    std::thread t (setup_network_prog);
+    t.join();
+
     struct cputracker_bpf *skel = cputracker_bpf__open_and_load();
     if (!skel) {
         std::cerr << "Error loading BPF object" << std::endl;
