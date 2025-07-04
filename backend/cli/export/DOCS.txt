@@ -1,0 +1,56 @@
+🛠️ sysopt — System Optimization CLI
+A command-line tool to monitor and optimize RAM, CPU, and network bandwidth usage per application.
+
+📦 Usage
+bash
+Copy
+Edit
+sysopt <domain> <command> [options...]
+
+📁 Domains
+🧠 ram — RAM Monitoring
+Commands:
+Command	Description
+usage	Show current RAM usage
+top	Display top memory-consuming processes
+
+Usage Examples:
+bash
+Copy
+Edit
+sysopt ram usage
+sysopt ram top
+🖥️ cpu — CPU Monitoring & Optimization
+Commands:
+Command	Description
+get	Show CPU stats
+optimize <name> <level>	Optimize a process by name
+restore <name>	Restore a specific process
+restore-all	Restore all processes
+optimize-heavy	Optimize all heavy CPU processes
+whitelist add <name>	Add a process to whitelist
+whitelist remove <name>	Remove a process from whitelist
+whitelist show	Show all whitelisted processes
+
+Usage Examples:
+bash
+Copy
+Edit
+sysopt cpu get
+sysopt cpu optimize chrome medium
+sysopt cpu whitelist add firefox
+🌐 network — Network Stats & Rate Limiting
+Commands:
+Command	Description
+stats-overall	Show total TX/RX usage
+stats-pid	Show per-process TX/RX stats
+set-limit <appname> <rate-mbps>	Limit app's bandwidth
+reset-limit <appname>	Remove app's bandwidth limit
+
+Usage Examples:
+bash
+Copy
+Edit
+sysopt network stats-pid
+sysopt network stats-overall
+sysopt network set-limit code 10

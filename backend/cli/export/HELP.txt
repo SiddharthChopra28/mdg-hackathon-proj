@@ -1,0 +1,10 @@
+TO run the cli tool:
+sudo ./ipc_server_cpu
+sudo ./ipc_server_ram
+sudo ./network
+
+run these in 3 seperate terminals
+
+sudo ./sysopt
+
+to run the tool
