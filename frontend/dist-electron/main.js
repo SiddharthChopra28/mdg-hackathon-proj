@@ -1,3 +1,373 @@
-"use strict";Object.defineProperty(exports,Symbol.toStringTag,{value:"Module"});const n=require("electron"),E=require("node:url"),c=require("node:path"),C=require("net"),_=require("fs"),P=require("os");var g=typeof document<"u"?document.currentScript:null;function O(t){const e=Object.create(null,{[Symbol.toStringTag]:{value:"Module"}});if(t){for(const r in t)if(r!=="default"){const s=Object.getOwnPropertyDescriptor(t,r);Object.defineProperty(e,r,s.get?s:{enumerable:!0,get:()=>t[r]})}}return e.default=t,Object.freeze(e)}const y=O(C),T="/tmp/cpu_optimizer.sock";class k{async sendCommand(e){return new Promise((r,s)=>{const o=y.createConnection(T);o.on("connect",()=>{o.write(JSON.stringify(e))}),o.on("data",a=>{try{const i=a.toString().trim();i.startsWith("{")||i.startsWith("[")?r(JSON.parse(i)):r(i)}catch{r(a.toString().trim())}o.end()}),o.on("error",a=>{s(a)})})}async getProcesses(){try{const e=await this.sendCommand({action:"cpu_print_processes"});return Array.isArray(e)?e:[]}catch(e){return console.error("Error getting processes:",e),[]}}async getProcessorInfo(){try{return await this.sendCommand({action:"cpu_processor_info"})||{}}catch(e){return console.error("Error getting processor info:",e),{}}}async getWhitelist(){try{const e=await this.sendCommand({action:"cpu_list_whitelist"});return Array.isArray(e)?e:[]}catch(e){return console.error("Error getting whitelist:",e),[]}}async optimizeProcess(e,r){try{return await this.sendCommand({action:"cpu_optimize",name:e,level:r})==="Optimized"}catch(s){return console.error("Error optimizing process:",s),!1}}async restoreProcess(e){try{return await this.sendCommand({action:"cpu_restore",name:e})==="Restored"}catch(r){return console.error("Error restoring process:",r),!1}}async restoreAll(){try{return await this.sendCommand({action:"cpu_restore_all"})==="All Restored"}catch(e){return console.error("Error restoring all processes:",e),!1}}async addToWhitelist(e){try{return await this.sendCommand({action:"cpu_add_whitelist",name:e})==="Added to whitelist"}catch(r){return console.error("Error adding to whitelist:",r),!1}}async removeFromWhitelist(e){try{return await this.sendCommand({action:"cpu_remove_whitelist",name:e})==="Removed from whitelist"}catch(r){return console.error("Error removing from whitelist:",r),!1}}}const A="/tmp/network_optimizer.sock";class I{async sendCommand(e){return new Promise((r,s)=>{const o=y.createConnection(A);o.on("connect",()=>{o.write(JSON.stringify(e))}),o.on("data",a=>{try{const i=a.toString().trim();i.startsWith("{")||i.startsWith("[")?r(JSON.parse(i)):r(i)}catch{r(a.toString().trim())}o.end()}),o.on("error",a=>{s(a)})})}async getNetworkUsage(){try{const e=await this.sendCommand({action:"network_get_usage"});return Array.isArray(e)?e:[]}catch(e){return console.error("Error getting network usage:",e),[]}}async setSpeedCap(e,r){try{return await this.sendCommand({action:"network_set_speed_cap",app_name:e,speed_mbps:r})==="Speed cap set"}catch(s){return console.error("Error setting speed cap:",s),!1}}async resetCap(e){try{return await this.sendCommand({action:"network_reset_cap",app_name:e})==="Speed cap reset"}catch(r){return console.error("Error resetting speed cap:",r),!1}}async networkOverall(){try{return console.log("In the send command block of network overall"),await this.sendCommand({action:"network_get_overall"})}catch(e){return console.error("Error resetting speed cap:",e),!1}}}const M="/tmp/ram_optimizer.sock";class v{async sendCommand(e){return new Promise((r,s)=>{const o=y.createConnection(M);o.on("connect",()=>{o.write(JSON.stringify(e))}),o.on("data",a=>{try{const i=a.toString().trim();r(JSON.parse(i))}catch{r(a.toString().trim())}o.end()}),o.on("error",a=>{s(a)})})}async getSystemRamUsage(){return this.sendCommand({action:"ram:get-system-usage"})}async getTopRamProcesses(){return this.sendCommand({action:"ram:get-top-processes"})}}n.app.commandLine.appendSwitch("no-sandbox");const f=c.dirname(E.fileURLToPath(typeof document>"u"?require("url").pathToFileURL(__filename).href:g&&g.tagName.toUpperCase()==="SCRIPT"&&g.src||new URL("main.js",document.baseURI).href));process.env.APP_ROOT=c.join(f,"../..");const S=c.join(process.env.APP_ROOT,"dist-electron"),d=c.join(process.env.APP_ROOT,"dist"),m=process.env.VITE_DEV_SERVER_URL;process.env.VITE_PUBLIC=m?c.join(process.env.APP_ROOT,"public"):d;let p=null,l,u,w;const N=c.join(P.homedir(),"cpu-monitor.log"),h=t=>_.appendFileSync(N,`[${new Date().toISOString()}] ${t}
-`);h(`APP_ROOT: ${process.env.APP_ROOT}`);h(`MAIN_DIST: ${S}`);h(`RENDERER_DIST: ${d}`);h(`index.html exists: ${_.existsSync(c.join(d,"index.html"))}`);function R(){h(`Loading: ${m||c.join(d,"index.html")}`),p=new n.BrowserWindow({width:1400,height:900,minWidth:1200,minHeight:800,webPreferences:{nodeIntegration:!1,contextIsolation:!0,preload:c.join(f,"preload.js"),sandbox:!1},titleBarStyle:"default",frame:!0,show:!1}),p.on("ready-to-show",()=>{p==null||p.show()}),m?p.loadURL(m):p.loadFile(c.join(d,"index.html"))}n.app.whenReady().then(()=>{try{R(),l=new k,u=new I,w=new v,b(),console.log("IPC handlers registered.")}catch(t){console.error("Error during app startup:",t)}});n.app.on("window-all-closed",()=>{process.platform!=="darwin"&&(n.app.quit(),p=null)});n.app.on("activate",()=>{n.BrowserWindow.getAllWindows().length===0&&R()});function b(){n.ipcMain.handle("cpu:get-processes",async()=>await l.getProcesses()),n.ipcMain.handle("cpu:get-processor-info",async()=>await l.getProcessorInfo()),n.ipcMain.handle("cpu:get-whitelist",async()=>await l.getWhitelist()),n.ipcMain.handle("cpu:optimize",async(t,e,r)=>await l.optimizeProcess(e,r)),n.ipcMain.handle("cpu:restore",async(t,e)=>await l.restoreProcess(e)),n.ipcMain.handle("cpu:restore-all",async()=>await l.restoreAll()),n.ipcMain.handle("cpu:add-whitelist",async(t,e)=>await l.addToWhitelist(e)),n.ipcMain.handle("cpu:remove-whitelist",async(t,e)=>await l.removeFromWhitelist(e)),n.ipcMain.handle("network:get-usage",async()=>await u.getNetworkUsage()),n.ipcMain.handle("network:set-speed-cap",async(t,e,r)=>await u.setSpeedCap(e,r)),n.ipcMain.handle("network:get-usage-overall",async()=>(console.log("request for network overall being sent"),await u.networkOverall())),n.ipcMain.handle("network:reset-cap",async(t,e)=>await u.resetCap(e)),n.ipcMain.handle("ram:get-system-usage",async()=>{try{return await w.getSystemRamUsage()}catch(t){return{error:"Failed to get RAM usage",details:t.message}}}),n.ipcMain.handle("ram:get-top-processes",async()=>{try{return await w.getTopRamProcesses()}catch(t){return{error:"Failed to get process list",details:t.message}}})}exports.MAIN_DIST=S;exports.RENDERER_DIST=d;exports.VITE_DEV_SERVER_URL=m;
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const electron = require("electron");
+const node_url = require("node:url");
+const path = require("node:path");
+const net = require("net");
+const fs = require("fs");
+const os = require("os");
+var _documentCurrentScript = typeof document !== "undefined" ? document.currentScript : null;
+function _interopNamespaceDefault(e) {
+  const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
+  if (e) {
+    for (const k in e) {
+      if (k !== "default") {
+        const d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: () => e[k]
+        });
+      }
+    }
+  }
+  n.default = e;
+  return Object.freeze(n);
+}
+const net__namespace = /* @__PURE__ */ _interopNamespaceDefault(net);
+const SOCKET_PATH = "/tmp/cpu_optimizer.sock";
+class SocketClient {
+  async sendCommand(command) {
+    return new Promise((resolve, reject) => {
+      const client = net__namespace.createConnection(SOCKET_PATH);
+      client.on("connect", () => {
+        client.write(JSON.stringify(command));
+      });
+      client.on("data", (data) => {
+        try {
+          const response = data.toString().trim();
+          if (response.startsWith("{") || response.startsWith("[")) {
+            resolve(JSON.parse(response));
+          } else {
+            resolve(response);
+          }
+        } catch (error) {
+          resolve(data.toString().trim());
+        }
+        client.end();
+      });
+      client.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  async getProcesses() {
+    try {
+      const result = await this.sendCommand({ action: "cpu_print_processes" });
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error getting processes:", error);
+      return [];
+    }
+  }
+  async getProcessorInfo() {
+    try {
+      const result = await this.sendCommand({ action: "cpu_processor_info" });
+      return result || {};
+    } catch (error) {
+      console.error("Error getting processor info:", error);
+      return {};
+    }
+  }
+  async getWhitelist() {
+    try {
+      const result = await this.sendCommand({ action: "cpu_list_whitelist" });
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error getting whitelist:", error);
+      return [];
+    }
+  }
+  async optimizeProcess(name, level) {
+    try {
+      const result = await this.sendCommand({
+        action: "cpu_optimize",
+        name,
+        level
+      });
+      return result === "Optimized";
+    } catch (error) {
+      console.error("Error optimizing process:", error);
+      return false;
+    }
+  }
+  async restoreProcess(name) {
+    try {
+      const result = await this.sendCommand({
+        action: "cpu_restore",
+        name
+      });
+      return result === "Restored";
+    } catch (error) {
+      console.error("Error restoring process:", error);
+      return false;
+    }
+  }
+  async restoreAll() {
+    try {
+      const result = await this.sendCommand({ action: "cpu_restore_all" });
+      return result === "All Restored";
+    } catch (error) {
+      console.error("Error restoring all processes:", error);
+      return false;
+    }
+  }
+  async addToWhitelist(name) {
+    try {
+      const result = await this.sendCommand({
+        action: "cpu_add_whitelist",
+        name
+      });
+      return result === "Added to whitelist";
+    } catch (error) {
+      console.error("Error adding to whitelist:", error);
+      return false;
+    }
+  }
+  async removeFromWhitelist(name) {
+    try {
+      const result = await this.sendCommand({
+        action: "cpu_remove_whitelist",
+        name
+      });
+      return result === "Removed from whitelist";
+    } catch (error) {
+      console.error("Error removing from whitelist:", error);
+      return false;
+    }
+  }
+}
+const NETWORK_SOCKET_PATH = "/tmp/network_optimizer.sock";
+class NetworkSocketClient {
+  async sendCommand(command) {
+    return new Promise((resolve, reject) => {
+      const client = net__namespace.createConnection(NETWORK_SOCKET_PATH);
+      client.on("connect", () => {
+        client.write(JSON.stringify(command));
+      });
+      client.on("data", (data) => {
+        try {
+          const response = data.toString().trim();
+          if (response.startsWith("{") || response.startsWith("[")) {
+            resolve(JSON.parse(response));
+          } else {
+            resolve(response);
+          }
+        } catch (error) {
+          resolve(data.toString().trim());
+        }
+        client.end();
+      });
+      client.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  // TODO: Register this endpoint in main.ts
+  // Endpoint: network:get-usage
+  async getNetworkUsage() {
+    try {
+      const result = await this.sendCommand({ action: "network_get_usage" });
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error getting network usage:", error);
+      return [];
+    }
+  }
+  // TODO: Register this endpoint in main.ts  
+  // Endpoint: network:set-speed-cap
+  async setSpeedCap(appName, speedMBps) {
+    try {
+      const result = await this.sendCommand({
+        action: "network_set_speed_cap",
+        app_name: appName,
+        speed_mbps: speedMBps
+      });
+      return result === "Speed cap set";
+    } catch (error) {
+      console.error("Error setting speed cap:", error);
+      return false;
+    }
+  }
+  // TODO: Register this endpoint in main.ts
+  // Endpoint: network:reset-cap  
+  async resetCap(appName) {
+    try {
+      const result = await this.sendCommand({
+        action: "network_reset_cap",
+        app_name: appName
+      });
+      return result === "Speed cap reset";
+    } catch (error) {
+      console.error("Error resetting speed cap:", error);
+      return false;
+    }
+  }
+  async networkOverall() {
+    try {
+      console.log("In the send command block of network overall");
+      const result = await this.sendCommand({
+        action: "network_get_overall"
+      });
+      return result;
+    } catch (error) {
+      console.error("Error resetting speed cap:", error);
+      return false;
+    }
+  }
+}
+const RAM_SOCKET_PATH = "/tmp/ram_optimizer.sock";
+class RamSocketClient {
+  async sendCommand(command) {
+    return new Promise((resolve, reject) => {
+      const client = net__namespace.createConnection(RAM_SOCKET_PATH);
+      client.on("connect", () => {
+        client.write(JSON.stringify(command));
+      });
+      client.on("data", (data) => {
+        try {
+          const response = data.toString().trim();
+          resolve(JSON.parse(response));
+        } catch {
+          resolve(data.toString().trim());
+        }
+        client.end();
+      });
+      client.on("error", (error) => {
+        reject(error);
+      });
+    });
+  }
+  // 🧠 RAM usage summary
+  async getSystemRamUsage() {
+    return this.sendCommand({ action: "ram:get-system-usage" });
+  }
+  // 📋 Top RAM-consuming processes
+  async getTopRamProcesses() {
+    return this.sendCommand({ action: "ram:get-top-processes" });
+  }
+}
+electron.app.commandLine.appendSwitch("no-sandbox");
+const __dirname$1 = path.dirname(node_url.fileURLToPath(typeof document === "undefined" ? require("url").pathToFileURL(__filename).href : _documentCurrentScript && _documentCurrentScript.tagName.toUpperCase() === "SCRIPT" && _documentCurrentScript.src || new URL("main.js", document.baseURI).href));
+process.env.APP_ROOT = path.join(__dirname$1, "../..");
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+let win = null;
+let socketClient;
+let networkSocketClient;
+let ramSocketClient;
+const LOG_PATH = path.join(os.homedir(), "cpu-monitor.log");
+const log = (msg) => fs.appendFileSync(LOG_PATH, `[${(/* @__PURE__ */ new Date()).toISOString()}] ${msg}
+`);
+log(`APP_ROOT: ${process.env.APP_ROOT}`);
+log(`MAIN_DIST: ${MAIN_DIST}`);
+log(`RENDERER_DIST: ${RENDERER_DIST}`);
+log(`index.html exists: ${fs.existsSync(path.join(RENDERER_DIST, "index.html"))}`);
+function createWindow() {
+  log(`Loading: ${VITE_DEV_SERVER_URL || path.join(RENDERER_DIST, "index.html")}`);
+  win = new electron.BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1200,
+    minHeight: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname$1, "preload.js"),
+      sandbox: false
+      // Disable sandbox for development
+    },
+    titleBarStyle: "default",
+    frame: true,
+    show: false
+  });
+  win.on("ready-to-show", () => {
+    win == null ? void 0 : win.show();
+  });
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
+}
+electron.app.whenReady().then(() => {
+  try {
+    createWindow();
+    socketClient = new SocketClient();
+    networkSocketClient = new NetworkSocketClient();
+    ramSocketClient = new RamSocketClient();
+    registerIpcHandlers();
+    console.log("IPC handlers registered.");
+  } catch (err) {
+    console.error("Error during app startup:", err);
+  }
+});
+electron.app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    electron.app.quit();
+    win = null;
+  }
+});
+electron.app.on("activate", () => {
+  if (electron.BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+function registerIpcHandlers() {
+  electron.ipcMain.handle("cpu:get-processes", async () => {
+    return await socketClient.getProcesses();
+  });
+  electron.ipcMain.handle("cpu:get-processor-info", async () => {
+    return await socketClient.getProcessorInfo();
+  });
+  electron.ipcMain.handle("cpu:get-whitelist", async () => {
+    return await socketClient.getWhitelist();
+  });
+  electron.ipcMain.handle("cpu:optimize", async (_, name, level) => {
+    return await socketClient.optimizeProcess(name, level);
+  });
+  electron.ipcMain.handle("cpu:restore", async (_, name) => {
+    return await socketClient.restoreProcess(name);
+  });
+  electron.ipcMain.handle("cpu:restore-all", async () => {
+    return await socketClient.restoreAll();
+  });
+  electron.ipcMain.handle("cpu:add-whitelist", async (_, name) => {
+    return await socketClient.addToWhitelist(name);
+  });
+  electron.ipcMain.handle("cpu:remove-whitelist", async (_, name) => {
+    return await socketClient.removeFromWhitelist(name);
+  });
+  electron.ipcMain.handle("network:get-usage", async () => {
+    return await networkSocketClient.getNetworkUsage();
+  });
+  electron.ipcMain.handle("network:set-speed-cap", async (_, appName, speedMBps) => {
+    return await networkSocketClient.setSpeedCap(appName, speedMBps);
+  });
+  electron.ipcMain.handle("network:get-usage-overall", async () => {
+    console.log("request for network overall being sent");
+    return await networkSocketClient.networkOverall();
+  });
+  electron.ipcMain.handle("network:reset-cap", async (_, appName) => {
+    return await networkSocketClient.resetCap(appName);
+  });
+  electron.ipcMain.handle("ram:get-system-usage", async () => {
+    try {
+      return await ramSocketClient.getSystemRamUsage();
+    } catch (err) {
+      return { error: "Failed to get RAM usage", details: err.message };
+    }
+  });
+  electron.ipcMain.handle("ram:get-top-processes", async () => {
+    try {
+      return await ramSocketClient.getTopRamProcesses();
+    } catch (err) {
+      return { error: "Failed to get process list", details: err.message };
+    }
+  });
+}
+exports.MAIN_DIST = MAIN_DIST;
+exports.RENDERER_DIST = RENDERER_DIST;
+exports.VITE_DEV_SERVER_URL = VITE_DEV_SERVER_URL;
 //# sourceMappingURL=main.js.map
