@@ -82,42 +82,31 @@ npm install
 
 3. Launch the app:
 
-npm start
+`npm start`
 
-# Command-Line Interface (CLI)
+### Command-Line Interface (CLI)
 
 The backend daemons can also be queried directly from any terminal for quick, scriptable access to system data.
 
+`sysopt [ram|cpu|network\] command`
 
--=CPU Monitoring:
+### Monitor incoming and outgoing traffic per process
 
-# Get the top 5 CPU-consuming processes
-cpu-cli --top 5
+### Limit or throttle the bandwidth usage per application
 
-# Get a summary of CPU core usage
-cpu-cli --summary
+### Get the top 5 CPU-consuming processes
 
--=RAM Monitoring:
+### Get a summary of CPU core usage
 
-# See a list of processes sorted by memory usage
-ram-cli --list
+### See a list of processes sorted by memory usage
 
-# Get total, used, and free memory
-ram-cli --usage
+### Get total, used, and free memory
 
 
--=Network Monitoring:
-
-# Monitor incoming and outgoing traffic per process
-net-cli --proc
 
 # Uninstallation
 
-We provide a simple script to cleanly remove all components of this project from your system.
-
-To uninstall, run the following command from the project's root directory:
-
-sudo ./uninstall.sh
+`sudo ./uninstall.sh`
 
 
 This will:
