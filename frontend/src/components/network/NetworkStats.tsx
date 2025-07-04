@@ -8,6 +8,7 @@ interface NetworkStatsProps {
 export const NetworkStats: React.FC<NetworkStatsProps> = ({ networkData }) => {
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
+    if(bytes === null) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -43,7 +44,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ networkData }) => {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-gray-400 text-sm">Total</span>
-            <span className="text-white text-xl font-bold">{formatBytes(networkData.total * 1024 * 1024)}</span>
+            <span className="text-white text-xl font-bold">{formatBytes(networkData.total)}</span>
           </div>
         </div>
       </div>
@@ -52,7 +53,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ networkData }) => {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="text-center">
           <span className="text-gray-400 text-sm block">Incoming</span>
-          <span className="text-white text-lg font-bold">{formatBytes(networkData.incoming * 1024 * 1024)}</span>
+          <span className="text-white text-lg font-bold">{formatBytes(networkData.incoming)}</span>
           <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
             <div 
               className="bg-orange-500 h-2 rounded-full" 
@@ -63,7 +64,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ networkData }) => {
         
         <div className="text-center">
           <span className="text-gray-400 text-sm block">Outgoing</span>
-          <span className="text-white text-lg font-bold">{formatBytes(networkData.outgoing * 1024 * 1024)}</span>
+          <span className="text-white text-lg font-bold">{formatBytes(networkData.outgoing)}</span>
           <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
             <div 
               className="bg-orange-500 h-2 rounded-full" 
@@ -73,17 +74,7 @@ export const NetworkStats: React.FC<NetworkStatsProps> = ({ networkData }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <span className="text-gray-400 text-sm block">External</span>
-          <span className="text-white text-lg font-bold">{formatBytes(networkData.external * 1024 * 1024)}</span>
-        </div>
-        
-        <div className="text-center">
-          <span className="text-gray-400 text-sm block">Local</span>
-          <span className="text-white text-lg font-bold">{formatBytes(networkData.local * 1024)}</span>
-        </div>
-      </div>
+      
     </div>
   );
-};
+};  
