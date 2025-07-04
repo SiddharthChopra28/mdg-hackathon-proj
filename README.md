@@ -1,9 +1,10 @@
-# Advanced Linux System Monitor
+# Sysopt - Advanced Linux System Monitor
 
 
 An advanced system monitoring tool designed exclusively for Linux. It provides a beautiful Electron-based graphical interface and powerful command-line tools to inspect CPU, RAM, and Network activity in real-time, all powered by the incredible performance of eBPF.
 
-
+### Demo Video: 
+- https://github.com/SiddharthChopra28/mdg-hackathon-proj/blob/main/final_final.webm
 
 Features
 
